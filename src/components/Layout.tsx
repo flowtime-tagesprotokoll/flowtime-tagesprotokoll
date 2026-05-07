@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import type { ReactNode } from 'react';
 import { useAuth } from '../lib/authStore';
 import { DokuReminderModal } from './DokuReminder';
+import { ShiftReminders } from './ShiftReminders';
 
 interface LayoutProps {
   children: ReactNode;
@@ -120,6 +121,8 @@ export function Layout({ children, rightSlot }: LayoutProps) {
           onDone={() => setShowDoku(false)}
         />
       )}
+
+      <ShiftReminders />
     </div>
   );
 }
