@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import type { ReactNode } from 'react';
 import { useAuth } from '../lib/authStore';
 import { DokuReminderModal } from './DokuReminder';
@@ -44,11 +44,36 @@ export function Layout({ children, rightSlot }: LayoutProps) {
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
           {rightSlot}
+          {session?.kind === 'admin' && (
+            <>
+              <Link
+                to="/"
+                className="btn-ghost text-xs px-3 py-1.5"
+                title="Dashboard"
+              >
+                🏠
+              </Link>
+              <Link
+                to="/reports"
+                className="btn-ghost text-xs px-3 py-1.5"
+                title="Monatsreport"
+              >
+                📊 Report
+              </Link>
+              <Link
+                to="/audit"
+                className="btn-ghost text-xs px-3 py-1.5"
+                title="Audit-Log"
+              >
+                📋 Audit
+              </Link>
+            </>
+          )}
           {session && (
             <>
-              <div className="text-right text-xs leading-tight">
+              <div className="text-right text-xs leading-tight ml-2">
                 <div className="text-text">{session.profile.name}</div>
                 <div className="text-muted uppercase tracking-wider">
                   {session.profile.rolle}

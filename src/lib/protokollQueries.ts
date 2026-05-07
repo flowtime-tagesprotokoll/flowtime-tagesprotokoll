@@ -164,6 +164,31 @@ export function useReplaceBewegungen() {
 }
 
 /**
+ * Liste aller Protokolle (Admin: alle, sonst nur heute via RLS).
+ * Mit Schichten-Aggregat für Status-Anzeige.
+ */
+export function useProtokollListe() {
+  return useQuery({
+    queryKey: ['protokoll-liste'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('protokolle')
+        .select('id, shop_id, datum, erstellt_am, schichten(schicht_nr, mitarbeiter_id, kassenist)')
+        .order('datum', { ascending: false })
+        .limit(500);
+      if (error) throw error;
+      return (data ?? []) as Array<{
+        id: string;
+        shop_id: string;
+        datum: string;
+        erstellt_am: string;
+        schichten: { schicht_nr: number; mitarbeiter_id: string | null; kassenist: number | null }[];
+      }>;
+    },
+  });
+}
+
+/**
  * Findet IST-Wert des letzten Protokolls dieses Shops vor `datum`
  * (für Vortags-Übernahme als Kassenstart).
  */
