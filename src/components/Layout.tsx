@@ -65,6 +65,13 @@ export function Layout({ children, rightSlot }: LayoutProps) {
                 📊 Report
               </Link>
               <Link
+                to="/dokubericht"
+                className="btn-ghost text-xs px-3 py-1.5"
+                title="Dokumentationsbericht (PDF/Druck)"
+              >
+                📑 Doku-Bericht
+              </Link>
+              <Link
                 to="/audit"
                 className="btn-ghost text-xs px-3 py-1.5"
                 title="Audit-Log"

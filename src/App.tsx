@@ -6,6 +6,7 @@ import { ProtokollEditPage } from './pages/ProtokollEdit';
 import { AuditPage } from './pages/Audit';
 import { ReportsPage } from './pages/Reports';
 import { RemindersPreviewPage } from './pages/RemindersPreview';
+import { DokuberichtPage } from './pages/Dokubericht';
 import { useAuth } from './lib/authStore';
 import { checkForUpdates } from './lib/updater';
 import { useEffect } from 'react';
@@ -83,6 +84,14 @@ export default function App() {
             element={
               <RequireAuth>
                 <RemindersPreviewPage />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/dokubericht"
+            element={
+              <RequireAuth>
+                <DokuberichtPage />
               </RequireAuth>
             }
           />
