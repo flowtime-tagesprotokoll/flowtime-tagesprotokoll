@@ -73,6 +73,10 @@ interface MitarbeiterStats {
   stunden: number;
   schichten: number;
   shops: Set<string>;
+  diffSumme: number;
+  diffAbsSumme: number; // Σ |diff|
+  diffSchichten: number; // Anzahl Schichten mit ermitteltem Diff
+  maxDiff: number; // grösster Einzel-Diff (signed)
 }
 
 interface ShopStats {
@@ -151,10 +155,20 @@ export function ReportsPage() {
                 stunden: 0,
                 schichten: 0,
                 shops: new Set<string>(),
+                diffSumme: 0,
+                diffAbsSumme: 0,
+                diffSchichten: 0,
+                maxDiff: 0,
               };
               m.stunden += h;
               m.schichten += 1;
               m.shops.add(p.shop_id);
+              if (sums.diff !== null) {
+                m.diffSumme += sums.diff;
+                m.diffAbsSumme += Math.abs(sums.diff);
+                m.diffSchichten += 1;
+                if (Math.abs(sums.diff) > Math.abs(m.maxDiff)) m.maxDiff = sums.diff;
+              }
               mitarbeiterMap.set(s.mitarbeiter_id, m);
             }
           }
@@ -347,6 +361,76 @@ export function ReportsPage() {
           )}
         </Section>
 
+        {/* Differenzen-Statistik */}
+        <Section title="Differenzen pro Mitarbeiter">
+          {mitarbeiterStats.filter((m) => m.diffSchichten > 0).length === 0 ? (
+            <div className="text-sm text-muted">
+              Keine Diff-Daten in diesem Monat.
+            </div>
+          ) : (
+            <div className="bg-surface-2 border border-border-soft rounded overflow-hidden">
+              <div className="grid grid-cols-[1fr_70px_90px_90px_90px] gap-2 px-3 py-2 text-[10px] uppercase tracking-wider text-muted bg-surface-3">
+                <div>Mitarbeiter</div>
+                <div className="text-right">Schichten</div>
+                <div className="text-right">Σ |Diff|</div>
+                <div className="text-right">Σ Diff</div>
+                <div className="text-right">Max</div>
+              </div>
+              <div className="divide-y divide-border-soft">
+                {[...mitarbeiterStats]
+                  .filter((m) => m.diffSchichten > 0)
+                  .sort((a, b) => b.diffAbsSumme - a.diffAbsSumme)
+                  .map((m) => (
+                    <div
+                      key={m.id}
+                      className="grid grid-cols-[1fr_70px_90px_90px_90px] gap-2 px-3 py-2 text-sm items-center"
+                    >
+                      <div>{m.name}</div>
+                      <div className="mono text-right">{m.diffSchichten}</div>
+                      <div className="mono text-right font-semibold">
+                        {formatEur(m.diffAbsSumme)}
+                      </div>
+                      <div
+                        className={`mono text-right font-semibold ${
+                          m.diffSumme < 0
+                            ? 'text-minus'
+                            : m.diffSumme > 0
+                              ? 'text-plus'
+                              : ''
+                        }`}
+                      >
+                        {formatEur(m.diffSumme)}
+                      </div>
+                      <div
+                        className={`mono text-right ${
+                          Math.abs(m.maxDiff) >= 5
+                            ? m.maxDiff < 0
+                              ? 'text-minus'
+                              : 'text-warn'
+                            : ''
+                        }`}
+                      >
+                        {formatEur(m.maxDiff)}
+                      </div>
+                    </div>
+                  ))}
+              </div>
+            </div>
+          )}
+        </Section>
+
+        {/* Tages-Heatmap */}
+        <Section title="Tages-Übersicht (Heatmap)">
+          <DiffHeatmap
+            month={month}
+            protokolle={protokolle ?? []}
+            shopMap={shopMap}
+            onDayClick={(shopId, datum) =>
+              navigate(`/protokoll/${shopId}/${datum}`)
+            }
+          />
+        </Section>
+
         {/* Vorfälle */}
         <Section title={`Vorfälle (${(vorfaelle ?? []).length})`}>
           {!vorfaelle || vorfaelle.length === 0 ? (
@@ -431,6 +515,112 @@ function Section({
         {title}
       </h2>
       {children}
+    </div>
+  );
+}
+
+interface HeatmapProps {
+  month: string;
+  protokolle: ProtokollMitDetails[];
+  shopMap: Map<string, { name: string; kurz: string }>;
+  onDayClick: (shopId: string, datum: string) => void;
+}
+
+function DiffHeatmap({ month, protokolle, shopMap, onDayClick }: HeatmapProps) {
+  const [y, m] = month.split('-').map(Number);
+  const daysInMonth = new Date(y, m, 0).getDate();
+  const days = Array.from({ length: daysInMonth }, (_, i) => i + 1);
+  const shops = [...shopMap.entries()].map(([id, s]) => ({ id, ...s }));
+
+  const protoMap = new Map<string, ProtokollMitDetails>();
+  protokolle.forEach((p) => protoMap.set(p.shop_id + '|' + p.datum, p));
+
+  function classifyDiff(absDiff: number): { bg: string; label: string } {
+    if (absDiff === 0) return { bg: '#1c1c1c', label: '–' };
+    if (absDiff < 5) return { bg: 'rgba(74,222,128,0.4)', label: 'ok' };
+    if (absDiff < 20) return { bg: 'rgba(251,191,36,0.5)', label: 'gelb' };
+    return { bg: 'rgba(248,113,113,0.6)', label: 'rot' };
+  }
+
+  return (
+    <div className="space-y-3">
+      <div className="text-xs text-muted">
+        Klick auf ein Feld öffnet das Protokoll.{' '}
+        <span className="inline-block w-2 h-2 bg-plus/40 align-middle ml-2" /> ok &nbsp;
+        <span className="inline-block w-2 h-2 bg-warn/50 align-middle ml-2" /> 5–20€ &nbsp;
+        <span className="inline-block w-2 h-2 bg-minus/60 align-middle ml-2" /> &gt;20€
+      </div>
+      <div className="overflow-x-auto">
+        <table className="text-xs">
+          <thead>
+            <tr>
+              <th className="text-left pr-2 pb-1 text-muted font-normal">Shop</th>
+              {days.map((d) => (
+                <th
+                  key={d}
+                  className="text-center w-6 pb-1 text-[10px] mono text-muted font-normal"
+                >
+                  {d}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {shops.map((shop) => (
+              <tr key={shop.id}>
+                <td className="pr-2 py-0.5 text-muted mono whitespace-nowrap">
+                  {shop.kurz}
+                </td>
+                {days.map((d) => {
+                  const datum = `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+                  const p = protoMap.get(shop.id + '|' + datum);
+                  let totalAbs = 0;
+                  let totalSigned = 0;
+                  let hasAny = false;
+                  if (p) {
+                    p.schichten.forEach((s) => {
+                      const sums = calcShift(s, s.kassenbewegungen ?? []);
+                      if (sums.diff !== null) {
+                        totalAbs += Math.abs(sums.diff);
+                        totalSigned += sums.diff;
+                        hasAny = true;
+                      }
+                    });
+                  }
+                  const cls = hasAny
+                    ? classifyDiff(totalAbs)
+                    : p
+                      ? { bg: 'rgba(212,255,0,0.1)', label: 'leer' }
+                      : { bg: 'transparent', label: '' };
+                  const tooltip = p
+                    ? hasAny
+                      ? `${datum} ${shop.kurz}: ${formatEur(totalSigned)}`
+                      : `${datum} ${shop.kurz}: kein IST eingetragen`
+                    : `${datum} ${shop.kurz}: kein Protokoll`;
+                  return (
+                    <td key={d} className="p-0.5">
+                      <button
+                        type="button"
+                        onClick={() => p && onDayClick(shop.id, datum)}
+                        disabled={!p}
+                        className="block w-5 h-5 rounded transition-transform hover:scale-150 cursor-pointer disabled:cursor-default"
+                        style={{
+                          background: cls.bg,
+                          border:
+                            cls.bg === 'transparent'
+                              ? '1px dashed #2a2a2a'
+                              : '1px solid #2a2a2a',
+                        }}
+                        title={tooltip}
+                      />
+                    </td>
+                  );
+                })}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
