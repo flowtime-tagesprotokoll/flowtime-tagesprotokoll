@@ -156,42 +156,63 @@ export function ProtokollEditPage() {
     [full, schicht2?.id],
   );
 
+  // Initial sync: Form-State NUR beim ersten Mal aus DB laden (per Schicht-ID).
+  // Danach ist der Form-State Wahrheit; sonst springt der Cursor beim Tippen.
+  const initS1Id = useRef<string | null>(null);
+  const initS2Id = useRef<string | null>(null);
   useEffect(() => {
-    if (schicht1 && !s1Dirty) setS1Form(shiftToForm(schicht1, bw1));
-  }, [schicht1, bw1, s1Dirty]);
+    if (schicht1 && initS1Id.current !== schicht1.id) {
+      initS1Id.current = schicht1.id;
+      setS1Form(shiftToForm(schicht1, bw1));
+    }
+  }, [schicht1, bw1]);
   useEffect(() => {
-    if (schicht2 && !s2Dirty) setS2Form(shiftToForm(schicht2, bw2));
-  }, [schicht2, bw2, s2Dirty]);
+    if (schicht2 && initS2Id.current !== schicht2.id) {
+      initS2Id.current = schicht2.id;
+      setS2Form(shiftToForm(schicht2, bw2));
+    }
+  }, [schicht2, bw2]);
 
-  // Vortags-Kasse als Schicht-1-Kassenstart vorschlagen
+  // Vortags-Kasse als Schicht-1-Kassenstart vorschlagen — nur einmal nach Initial-Load
+  const vortagApplied = useRef(false);
   useEffect(() => {
-    if (!schicht1 || !vortag) return;
+    if (vortagApplied.current) return;
+    if (!schicht1 || !vortag || !s1Form) return;
     if (schicht1.kassenstart !== null) return;
     if (schicht1.kassenstart_manuell) return;
-    updateSchicht.mutate({
-      shopId,
-      datum,
-      schichtId: schicht1.id,
-      patch: { kassenstart: vortag.ist },
-    });
+    if (s1Form.kassenstart !== '') return;
+    vortagApplied.current = true;
+    setS1Form((f) =>
+      f
+        ? { ...f, kassenstart: numToStr(vortag.ist), kassenstart_manuell: false }
+        : f,
+    );
+    setS1Dirty(true);
+    scheduleSave(1);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [schicht1?.id, vortag?.ist]);
+  }, [schicht1?.id, vortag?.ist, s1Form?.kassenstart]);
 
-  // Auto-Carry S1 → S2
+  // Auto-Carry S1 → S2: wenn S1 komplett, S2.kassenstart auf S1.IST setzen
+  // (im Form-State; wird beim nächsten Save persistiert)
   useEffect(() => {
-    if (!schicht1 || !schicht2) return;
-    if (!isShiftComplete(schicht1)) return;
-    if (schicht2.kassenstart_manuell) return;
-    if (schicht1.kassenist === null) return;
-    if (schicht2.kassenstart === schicht1.kassenist) return;
-    updateSchicht.mutate({
-      shopId,
-      datum,
-      schichtId: schicht2.id,
-      patch: { kassenstart: schicht1.kassenist },
-    });
+    if (!s1Form || !s2Form) return;
+    if (!schicht1 || !isShiftComplete(schicht1)) return;
+    if (s2Form.kassenstart_manuell) return;
+    const istVal = strToNum(s1Form.kassenist);
+    if (istVal === null) return;
+    if (strToNum(s2Form.kassenstart) === istVal) return;
+    setS2Form((f) => (f ? { ...f, kassenstart: numToStr(istVal) } : f));
+    setS2Dirty(true);
+    scheduleSave(2);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [schicht1?.kassenist, schicht1?.mitarbeiter_id, schicht1?.zeit_bis, schicht2?.id]);
+  }, [s1Form?.kassenist, s1Form?.mitarbeiter_id, s1Form?.zeit_bis]);
+
+  // Refs auf den jeweils aktuellsten Form-State, damit verspätete Save-Timer
+  // nicht mit veralteten Closure-Werten arbeiten.
+  const s1FormRef = useRef<ShiftForm | null>(null);
+  const s2FormRef = useRef<ShiftForm | null>(null);
+  s1FormRef.current = s1Form;
+  s2FormRef.current = s2Form;
 
   // Save-Funktionen mit Debounce
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -201,7 +222,7 @@ export function ProtokollEditPage() {
   }
 
   async function saveShift(which: 1 | 2) {
-    const form = which === 1 ? s1Form : s2Form;
+    const form = which === 1 ? s1FormRef.current : s2FormRef.current;
     const schicht = which === 1 ? schicht1 : schicht2;
     if (!form || !schicht) return;
     setSaveErr(null);
