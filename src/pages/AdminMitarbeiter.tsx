@@ -2,8 +2,10 @@ import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { Layout } from '../components/Layout';
+import { PinKeypad } from '../components/PinKeypad';
 import { useAuth } from '../lib/authStore';
 import { supabase } from '../lib/supabase';
+import { hashPin } from '../lib/pin';
 import type { Profile, Rolle } from '../lib/types';
 
 function useAllProfiles() {
@@ -30,6 +32,7 @@ export function AdminMitarbeiterPage() {
   const [newRolle, setNewRolle] = useState<Rolle>('mitarbeiter');
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const [pinForProfile, setPinForProfile] = useState<Profile | null>(null);
 
   if (session.kind !== 'admin') {
     return (
@@ -77,6 +80,19 @@ export function AdminMitarbeiterPage() {
     } finally {
       setBusy(false);
     }
+  }
+
+  async function setPin(p: Profile, pin: string) {
+    const hash = await hashPin(pin);
+    await supabase.from('profiles').update({ pin_hash: hash }).eq('id', p.id);
+    invalidate();
+    setPinForProfile(null);
+  }
+
+  async function clearPin(p: Profile) {
+    if (!window.confirm(`PIN von ${p.name} entfernen?`)) return;
+    await supabase.from('profiles').update({ pin_hash: null }).eq('id', p.id);
+    invalidate();
   }
 
   async function deleteProfile(p: Profile) {
@@ -195,6 +211,8 @@ export function AdminMitarbeiterPage() {
                     }
                     onDelete={() => deleteProfile(p)}
                     onMove={(dir) => move(p, dir)}
+                    onSetPin={() => setPinForProfile(p)}
+                    onClearPin={() => clearPin(p)}
                   />
                 ))}
               </div>
@@ -202,6 +220,16 @@ export function AdminMitarbeiterPage() {
           </Section>
         ))}
       </div>
+
+      {pinForProfile && (
+        <PinKeypad
+          title={`PIN setzen für ${pinForProfile.name}`}
+          subtitle="4-stellige PIN — wird beim Mitarbeiter-Login abgefragt."
+          confirm
+          onCancel={() => setPinForProfile(null)}
+          onSubmit={(pin) => setPin(pinForProfile, pin)}
+        />
+      )}
     </Layout>
   );
 }
@@ -232,6 +260,8 @@ function Row({
   onUpdate,
   onDelete,
   onMove,
+  onSetPin,
+  onClearPin,
 }: {
   profile: Profile;
   isFirst: boolean;
@@ -239,6 +269,8 @@ function Row({
   onUpdate: (patch: Partial<Profile>) => void;
   onDelete: () => void;
   onMove: (dir: -1 | 1) => void;
+  onSetPin: () => void;
+  onClearPin: () => void;
 }) {
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(profile.name);
@@ -252,7 +284,7 @@ function Row({
 
   return (
     <div
-      className="grid grid-cols-[auto_1fr_auto_auto_auto] gap-2 items-center p-2 rounded border border-border-soft"
+      className="grid grid-cols-[auto_1fr_auto_auto_auto_auto] gap-2 items-center p-2 rounded border border-border-soft"
       style={{ opacity: profile.aktiv ? 1 : 0.5 }}
     >
       <div className="flex flex-col">
@@ -311,6 +343,25 @@ function Row({
       <span className="text-[10px] text-muted-2 mono">
         {profile.auth_user_id ? 'Auth ✓' : ''}
       </span>
+      {profile.pin_hash ? (
+        <button
+          type="button"
+          onClick={onClearPin}
+          className="text-xs text-warn hover:underline"
+          title="PIN entfernen"
+        >
+          🔓 PIN
+        </button>
+      ) : (
+        <button
+          type="button"
+          onClick={onSetPin}
+          className="text-xs text-accent hover:underline"
+          title="PIN setzen"
+        >
+          🔢 PIN
+        </button>
+      )}
       <button
         type="button"
         onClick={onDelete}

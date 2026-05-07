@@ -1,9 +1,11 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Layout } from '../components/Layout';
+import { PinKeypad } from '../components/PinKeypad';
 import { useProfiles } from '../lib/queries';
 import { useAuth } from '../lib/authStore';
 import { supabase } from '../lib/supabase';
+import { verifyPin } from '../lib/pin';
 import type { Profile } from '../lib/types';
 
 export function LoginPage() {
@@ -11,14 +13,38 @@ export function LoginPage() {
   const setMitarbeiter = useAuth((s) => s.setMitarbeiter);
   const navigate = useNavigate();
   const [adminProfile, setAdminProfile] = useState<Profile | null>(null);
+  const [pinProfile, setPinProfile] = useState<Profile | null>(null);
+  const [pinErr, setPinErr] = useState<string | null>(null);
+  const [pinBusy, setPinBusy] = useState(false);
 
   function handleSelectProfile(p: Profile) {
-    if (p.rolle === 'mitarbeiter' || p.rolle === 'bezirksleiter') {
+    if (p.rolle === 'admin') {
+      setAdminProfile(p);
+      return;
+    }
+    // Mitarbeiter / Bezirksleiter: wenn PIN gesetzt → Keypad, sonst direkt rein
+    if (p.pin_hash) {
+      setPinProfile(p);
+      setPinErr(null);
+    } else {
       setMitarbeiter(p);
       navigate('/');
-    } else {
-      setAdminProfile(p);
     }
+  }
+
+  async function handlePinSubmit(pin: string) {
+    if (!pinProfile) return;
+    setPinBusy(true);
+    setPinErr(null);
+    const ok = await verifyPin(pin, pinProfile.pin_hash);
+    setPinBusy(false);
+    if (!ok) {
+      setPinErr('PIN falsch.');
+      return;
+    }
+    setMitarbeiter(pinProfile);
+    setPinProfile(null);
+    navigate('/');
   }
 
   return (
@@ -67,6 +93,20 @@ export function LoginPage() {
             useAuth.getState().setAdmin(profile, authUserId);
             navigate('/');
           }}
+        />
+      )}
+
+      {pinProfile && (
+        <PinKeypad
+          title={pinProfile.name}
+          subtitle="PIN eingeben"
+          onCancel={() => {
+            setPinProfile(null);
+            setPinErr(null);
+          }}
+          onSubmit={handlePinSubmit}
+          errorMessage={pinErr}
+          busy={pinBusy}
         />
       )}
     </Layout>

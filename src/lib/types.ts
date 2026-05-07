@@ -17,6 +17,7 @@ export interface Profile {
   aktiv: boolean;
   reihenfolge: number;
   created_at: string;
+  pin_hash: string | null;
 }
 
 export interface Protokoll {
