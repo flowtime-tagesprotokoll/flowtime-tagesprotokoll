@@ -5,6 +5,7 @@ import { BelegUpload } from '../components/BelegUpload';
 import { useAuth } from '../lib/authStore';
 import { useProfiles, useShops } from '../lib/queries';
 import {
+  useDeleteProtokoll,
   useEnsureProtokoll,
   useProtokoll,
   useReplaceBewegungen,
@@ -127,6 +128,8 @@ export function ProtokollEditPage() {
   const { data: vortag } = useVortagKasse(shopId, datum);
   const updateSchicht = useUpdateSchicht();
   const replaceBewegungen = useReplaceBewegungen();
+  const deleteProtokoll = useDeleteProtokoll();
+  const isAdmin = session.kind === 'admin';
 
   // Form-State pro Schicht
   const [s1Form, setS1Form] = useState<ShiftForm | null>(null);
@@ -381,6 +384,12 @@ export function ProtokollEditPage() {
         {saveErr && (
           <div className="bg-minus/10 border border-minus/30 text-minus rounded p-3 text-sm">
             Speichern fehlgeschlagen: {saveErr}
+          </div>
+        )}
+
+        {isAdmin && datum !== new Date().toISOString().slice(0, 10) && (
+          <div className="bg-warn/10 border border-warn/30 text-warn rounded p-2 text-xs mono">
+            ⚠ Admin-Bearbeitung — dies ist nicht das heutige Datum.
           </div>
         )}
 
@@ -745,7 +754,36 @@ export function ProtokollEditPage() {
           </div>
         </div>
 
-        <div className="flex gap-2 justify-end pt-1">
+        <div className="flex gap-2 justify-between items-center pt-1 flex-wrap">
+          {isAdmin ? (
+            <button
+              type="button"
+              onClick={async () => {
+                if (
+                  !window.confirm(
+                    `Protokoll für ${shop.name} am ${datum} wirklich löschen?\n\nAlle Schichten und Bewegungen werden dauerhaft entfernt. Diese Aktion kann nicht rückgängig gemacht werden.`,
+                  )
+                )
+                  return;
+                try {
+                  await deleteProtokoll.mutateAsync({
+                    shopId,
+                    datum,
+                    protokollId: full.protokoll.id,
+                  });
+                  navigate('/');
+                } catch (e) {
+                  setSaveErr(String(e instanceof Error ? e.message : e));
+                }
+              }}
+              disabled={deleteProtokoll.isPending}
+              className="text-xs text-minus hover:underline disabled:opacity-50"
+            >
+              {deleteProtokoll.isPending ? 'Lösche …' : '🗑 Protokoll löschen'}
+            </button>
+          ) : (
+            <span />
+          )}
           <button
             type="button"
             onClick={() => navigate('/')}

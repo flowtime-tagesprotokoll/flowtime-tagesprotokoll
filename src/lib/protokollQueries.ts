@@ -136,6 +136,26 @@ export function useUpdateSchicht() {
   });
 }
 
+interface DeleteArgs {
+  shopId: string;
+  datum: string;
+  protokollId: string;
+}
+
+export function useDeleteProtokoll() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ protokollId }: DeleteArgs) => {
+      const { error } = await supabase.from('protokolle').delete().eq('id', protokollId);
+      if (error) throw error;
+    },
+    onSuccess: (_, vars) => {
+      qc.invalidateQueries({ queryKey: protokollKey(vars.shopId, vars.datum) });
+      qc.invalidateQueries({ queryKey: ['protokoll-liste'] });
+    },
+  });
+}
+
 interface ReplaceBewegungenArgs {
   shopId: string;
   datum: string;

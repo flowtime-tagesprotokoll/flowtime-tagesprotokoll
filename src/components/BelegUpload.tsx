@@ -23,6 +23,7 @@ export function BelegUpload({
   const [err, setErr] = useState<string | null>(null);
   const [zoom, setZoom] = useState(false);
   const [dragOver, setDragOver] = useState(false);
+  const [isFocused, setIsFocused] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const dropRef = useRef<HTMLDivElement>(null);
 
@@ -130,7 +131,9 @@ export function BelegUpload({
         <div
           ref={dropRef}
           tabIndex={0}
-          onClick={() => !disabled && fileInputRef.current?.click()}
+          onClick={() => !disabled && dropRef.current?.focus()}
+          onFocus={() => setIsFocused(true)}
+          onBlur={() => setIsFocused(false)}
           onPaste={onPaste}
           onDragOver={(e) => {
             e.preventDefault();
@@ -139,23 +142,40 @@ export function BelegUpload({
           onDragLeave={() => setDragOver(false)}
           onDrop={onDrop}
           style={{
-            border: `2px dashed ${dragOver ? '#d4ff00' : '#2a2a2a'}`,
+            border: `2px dashed ${dragOver || isFocused ? '#d4ff00' : '#2a2a2a'}`,
             borderRadius: 5,
             padding: '14px 8px',
             textAlign: 'center',
             cursor: disabled ? 'not-allowed' : 'pointer',
             transition: 'all 0.15s',
-            background: dragOver ? 'rgba(212,255,0,0.04)' : '#1c1c1c',
-            color: dragOver ? '#d4ff00' : '#888',
+            background: dragOver || isFocused ? 'rgba(212,255,0,0.04)' : '#1c1c1c',
+            color: dragOver || isFocused ? '#d4ff00' : '#888',
             opacity: disabled ? 0.5 : 1,
+            outline: 'none',
           }}
         >
           <div className="text-xl mb-0.5">{busy ? '⏳' : '📷'}</div>
           <div className="text-[11px] mono">
-            {busy ? 'lädt hoch …' : 'Foto / Screenshot hierher ziehen'}
+            {busy
+              ? 'lädt hoch …'
+              : isFocused
+                ? 'Strg+V drücken zum Einfügen'
+                : 'Klick zum Aktivieren · Drag&Drop'}
           </div>
-          <div className="text-[10px] mono mt-0.5" style={{ color: '#555' }}>
-            oder klicken · Strg+V einfügen
+          <div className="text-[10px] mono mt-1" style={{ color: '#555' }}>
+            oder{' '}
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                fileInputRef.current?.click();
+              }}
+              disabled={disabled || busy}
+              className="underline hover:text-accent"
+              style={{ color: '#888' }}
+            >
+              Datei wählen
+            </button>
           </div>
         </div>
       )}
