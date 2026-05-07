@@ -33,6 +33,24 @@ jobs:
       - name: Install npm deps
         run: npm ci
 
+      - name: DEBUG signing env
+        shell: pwsh
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        run: |
+          if ($env:TAURI_SIGNING_PRIVATE_KEY) {
+            Write-Host "PRIVATE_KEY length: $($env:TAURI_SIGNING_PRIVATE_KEY.Length)"
+            $first = $env:TAURI_SIGNING_PRIVATE_KEY.Substring(0, [Math]::Min(20, $env:TAURI_SIGNING_PRIVATE_KEY.Length))
+            Write-Host "PRIVATE_KEY first 20 chars: $first"
+            $bytes = [System.Text.Encoding]::UTF8.GetBytes($env:TAURI_SIGNING_PRIVATE_KEY)
+            Write-Host "First byte hex: $('{0:X2}' -f $bytes[0])"
+          } else {
+            Write-Host "PRIVATE_KEY: NOT SET"
+          }
+          Write-Host "PASSWORD set: $([bool]$env:TAURI_SIGNING_PRIVATE_KEY_PASSWORD)"
+          Write-Host "PASSWORD length: $($env:TAURI_SIGNING_PRIVATE_KEY_PASSWORD.Length)"
+
       - name: Build with Tauri Action (erzeugt msi + .sig + lädt msi hoch)
         uses: tauri-apps/tauri-action@v0
         env:

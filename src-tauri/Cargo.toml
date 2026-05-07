@@ -1,6 +1,6 @@
 [package]
 name = "flowtime-tagesprotokoll"
-version = "0.1.16"
+version = "0.1.17"
 description = "Flowtime Tagesprotokoll — Kassenabrechnung"
 authors = ["Flowtime GmbH"]
 edition = "2021"
