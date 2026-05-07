@@ -11,7 +11,7 @@ import {
   formatEur,
   formatStunden,
 } from '../lib/calc';
-import type { Kassenbewegung, Schicht } from '../lib/types';
+import type { AuditEntry, Kassenbewegung, Schicht } from '../lib/types';
 
 function currentMonth(): string {
   return new Date().toISOString().slice(0, 7);
@@ -49,6 +49,24 @@ function useMonatsProtokolle(month: string) {
   });
 }
 
+function useMonatsVorfaelle(month: string) {
+  return useQuery({
+    queryKey: ['vorfaelle-monat', month],
+    queryFn: async (): Promise<AuditEntry[]> => {
+      const { from, to } = monthRange(month);
+      const { data, error } = await supabase
+        .from('audit_log')
+        .select('*')
+        .eq('action', 'VORFALL')
+        .gte('ts', from)
+        .lt('ts', to)
+        .order('ts', { ascending: false });
+      if (error) throw error;
+      return (data ?? []) as AuditEntry[];
+    },
+  });
+}
+
 interface MitarbeiterStats {
   id: string;
   name: string;
@@ -73,6 +91,7 @@ export function ReportsPage() {
   const { data: shops } = useShops();
   const { data: profiles } = useProfiles();
   const { data: protokolle, isLoading } = useMonatsProtokolle(month);
+  const { data: vorfaelle } = useMonatsVorfaelle(month);
 
   if (session.kind !== 'admin' && session.profile.rolle !== 'bezirksleiter') {
     return (
@@ -217,13 +236,22 @@ export function ReportsPage() {
             </button>
             <h1 className="text-xl font-bold">📊 Monatsreport</h1>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 print:hidden">
             <input
               type="month"
               value={month}
               onChange={(e) => setMonth(e.target.value)}
               className="px-3 py-2 rounded text-sm"
             />
+            <button
+              type="button"
+              onClick={() => window.print()}
+              disabled={isLoading || (protokolle ?? []).length === 0}
+              className="btn-ghost px-3 py-2 text-sm disabled:opacity-50"
+              title="Druck-Dialog öffnen (PDF speichern möglich)"
+            >
+              🖨 Drucken / PDF
+            </button>
             <button
               type="button"
               onClick={exportCsv}
@@ -241,7 +269,7 @@ export function ReportsPage() {
           <Kpi label="Schichten" value={String(totalSchichten)} />
           <Kpi label="Protokolle" value={String((protokolle ?? []).length)} />
           <Kpi
-            label="Umsatz"
+            label="Umsatz (Z-Bons)"
             value={formatEur(shopStats.reduce((a, s) => a + s.umsatz, 0))}
           />
         </div>
@@ -267,7 +295,7 @@ export function ReportsPage() {
                 </div>
                 <div className="grid grid-cols-2 gap-2 mt-2 text-sm">
                   <div>
-                    <div className="text-[10px] uppercase text-muted">Umsatz</div>
+                    <div className="text-[10px] uppercase text-muted">Umsatz Z-Bons</div>
                     <div className="mono font-semibold">{formatEur(s.umsatz)}</div>
                   </div>
                   <div>
@@ -315,6 +343,41 @@ export function ReportsPage() {
                   </div>
                 ))}
               </div>
+            </div>
+          )}
+        </Section>
+
+        {/* Vorfälle */}
+        <Section title={`Vorfälle (${(vorfaelle ?? []).length})`}>
+          {!vorfaelle || vorfaelle.length === 0 ? (
+            <div className="text-sm text-muted">Keine Vorfälle in diesem Monat.</div>
+          ) : (
+            <div className="space-y-2">
+              {vorfaelle.map((v) => {
+                const text =
+                  v.new_val && typeof v.new_val === 'object' && 'text' in v.new_val
+                    ? String((v.new_val as { text: string }).text)
+                    : '';
+                return (
+                  <div
+                    key={v.id}
+                    className="bg-warn/10 border border-warn/30 rounded p-3 text-sm"
+                  >
+                    <div className="text-xs text-muted mono mb-1">
+                      {new Date(v.ts).toLocaleString('de-DE', {
+                        day: '2-digit',
+                        month: '2-digit',
+                        year: '2-digit',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                      })}
+                      {' · '}
+                      <span className="text-text">{v.user_name ?? '?'}</span>
+                    </div>
+                    <div className="whitespace-pre-wrap">{text}</div>
+                  </div>
+                );
+              })}
             </div>
           )}
         </Section>

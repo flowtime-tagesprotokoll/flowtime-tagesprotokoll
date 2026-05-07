@@ -227,4 +227,34 @@
       border-bottom: 1px solid #1f1f1f;
     }
   }
+
+  /* Druck-Stylesheet — heller Hintergrund, schwarze Schrift */
+  @media print {
+    @page { margin: 1.5cm; }
+    body {
+      background: white !important;
+      color: black !important;
+      background-image: none !important;
+    }
+    header, footer, button, .print\\:hidden {
+      display: none !important;
+    }
+    .bg-surface, .bg-surface-2, .bg-surface-3 {
+      background: white !important;
+      border-color: #ccc !important;
+    }
+    .bg-warn\\/10 {
+      background: #fff8e1 !important;
+      border-color: #d4a200 !important;
+    }
+    .text-muted, .text-muted-2, .text-accent, .text-warn,
+    .text-plus, .text-minus, .text-soll, .text-ist {
+      color: black !important;
+    }
+    .bg-warn\\/10 * { color: #5d4500 !important; }
+    .border, .border-border, .border-border-soft, .border-warn\\/30 {
+      border-color: #ccc !important;
+    }
+    .max-w-5xl { max-width: 100% !important; }
+  }
 }
