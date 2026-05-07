@@ -72,7 +72,8 @@ export function WartungPage() {
         .select('id, schicht_nr, protokoll_id, beleg_storage_path, protokolle(shop_id, datum)')
         .like('beleg_storage_path', 'data:image%');
       if (error) throw error;
-      const list = (schichten ?? []) as Array<{
+      // Supabase typiert eingebettete FK-Joins als Array — wir wissen aber, dass es genau ein Protokoll ist.
+      const list = (schichten ?? []) as unknown as Array<{
         id: string;
         schicht_nr: number;
         protokoll_id: string;
