@@ -227,7 +227,9 @@ export function DokuberichtPage() {
           )}
 
           {days.map(([datum, shopsAmTag]) => {
-            const dayAudit = auditByDayAndUser.get(datum) ?? new Map();
+            const dayAudit =
+              auditByDayAndUser.get(datum) ??
+              new Map<string, { vorfaelle: AuditEntry[]; bestaetigt: AuditEntry[] }>();
             return (
               <section
                 key={datum}
@@ -296,7 +298,7 @@ export function DokuberichtPage() {
                               </div>
                             )}
 
-                            {vorfaelle.map((v) => {
+                            {vorfaelle.map((v: AuditEntry) => {
                               const data = (v.new_val ?? {}) as {
                                 text?: string | null;
                                 labels?: string[];
