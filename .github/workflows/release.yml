@@ -57,13 +57,20 @@ jobs:
       - name: Build latest.json manually (workaround for tauri-action upload skip)
         shell: pwsh
         run: |
-          $bundleDir = "src-tauri/target/release/bundle"
-          $msiPath = Get-ChildItem -Path "$bundleDir/msi" -Filter "*.msi" | Select-Object -First 1
-          $sigPath = Get-ChildItem -Path "$bundleDir/msi" -Filter "*.msi.sig" | Select-Object -First 1
+          Write-Host "Working dir: $pwd"
+          $msiPath = Get-ChildItem -Path . -Recurse -Filter "*.msi" -ErrorAction SilentlyContinue |
+            Where-Object { $_.FullName -notmatch "node_modules" } | Select-Object -First 1
+          $sigPath = Get-ChildItem -Path . -Recurse -Filter "*.msi.sig" -ErrorAction SilentlyContinue |
+            Where-Object { $_.FullName -notmatch "node_modules" } | Select-Object -First 1
           if (-not $msiPath -or -not $sigPath) {
+            Write-Host "Suchergebnisse:"
+            Get-ChildItem -Path . -Recurse -Filter "*.msi*" -ErrorAction SilentlyContinue |
+              Where-Object { $_.FullName -notmatch "node_modules" } | Select-Object FullName
             Write-Error "Konnte .msi oder .sig nicht finden"
             exit 1
           }
+          Write-Host "Gefunden: $($msiPath.FullName)"
+          Write-Host "Sig: $($sigPath.FullName)"
           $signature = Get-Content $sigPath.FullName -Raw
           $version = "${{ github.ref_name }}".TrimStart('v')
           $msiName = $msiPath.Name
