@@ -26,6 +26,42 @@ export function WartungPage() {
     setLog((l) => [...l, line]);
   }
 
+  async function downloadBackup() {
+    setMigrating(true);
+    setLog([]);
+    append('▶ Lade alle Tabellen …');
+    try {
+      const tables = ['shops', 'profiles', 'shop_mitarbeiter', 'protokolle', 'schichten', 'kassenbewegungen', 'audit_log'];
+      const out: Record<string, unknown[]> = {};
+      for (const t of tables) {
+        const { data, error } = await supabase.from(t).select('*');
+        if (error) throw error;
+        out[t] = data ?? [];
+        append(`  ${t}: ${(data ?? []).length} Zeilen`);
+      }
+      const payload = {
+        backupCreated: new Date().toISOString(),
+        version: 1,
+        tables: out,
+      };
+      const blob = new Blob([JSON.stringify(payload, null, 2)], {
+        type: 'application/json',
+      });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      const stamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+      a.href = url;
+      a.download = `flowtime-backup-${stamp}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+      append('✅ Backup heruntergeladen.');
+    } catch (e) {
+      append(`❌ Fehler: ${String(e instanceof Error ? e.message : e)}`);
+    } finally {
+      setMigrating(false);
+    }
+  }
+
   async function migrateBelege() {
     setMigrating(true);
     setLog([]);
@@ -105,6 +141,25 @@ export function WartungPage() {
             Einmalige Admin-Aktionen. Sorgsam verwenden.
           </div>
         </div>
+
+        <section className="bg-surface border border-border rounded-lg p-4 space-y-3">
+          <div>
+            <h2 className="font-bold">💾 Backup als JSON herunterladen</h2>
+            <p className="text-sm text-muted mt-1">
+              Lädt alle Tabellen (Shops, Profile, Protokolle, Schichten,
+              Bewegungen, Audit-Log) als eine JSON-Datei herunter. Empfehlung:
+              regelmäßig (z.B. monatlich) ausführen und sicher ablegen.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={downloadBackup}
+            disabled={migrating}
+            className="btn-primary px-4 py-2 text-sm font-bold disabled:opacity-50"
+          >
+            {migrating ? '…' : '⤓ Backup herunterladen'}
+          </button>
+        </section>
 
         <section className="bg-surface border border-border rounded-lg p-4 space-y-3">
           <div>

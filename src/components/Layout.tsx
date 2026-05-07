@@ -4,6 +4,7 @@ import type { ReactNode } from 'react';
 import { useAuth } from '../lib/authStore';
 import { DokuReminderModal } from './DokuReminder';
 import { ShiftReminders } from './ShiftReminders';
+import { OnlineIndicator } from './OnlineIndicator';
 
 interface LayoutProps {
   children: ReactNode;
@@ -35,6 +36,7 @@ export function Layout({ children, rightSlot }: LayoutProps) {
 
   return (
     <div className="min-h-screen flex flex-col">
+      <OnlineIndicator />
       <header className="border-b border-border-soft px-6 py-4 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 rounded bg-bg border border-border flex items-center justify-center">
