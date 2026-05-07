@@ -33,6 +33,12 @@ export function BelegUpload({
       setSignedUrl(null);
       return;
     }
+    // Migrierte Daten aus alter App enthalten data:URIs direkt im Feld.
+    // Neue Uploads sind Storage-Pfade.
+    if (belegPath.startsWith('data:')) {
+      setSignedUrl(belegPath);
+      return;
+    }
     getBelegUrl(belegPath)
       .then((url) => {
         if (!cancelled) setSignedUrl(url);
@@ -63,7 +69,10 @@ export function BelegUpload({
     setBusy(true);
     setErr(null);
     try {
-      await deleteBeleg(belegPath);
+      // Storage-Datei nur löschen wenn echter Storage-Pfad (nicht data:URI aus Migration)
+      if (!belegPath.startsWith('data:')) {
+        await deleteBeleg(belegPath);
+      }
       onChange(null);
     } catch (e) {
       setErr(String(e instanceof Error ? e.message : e));

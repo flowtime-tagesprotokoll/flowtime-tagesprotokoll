@@ -37,4 +37,12 @@ if (typeof window !== 'undefined' && typeof Headers !== 'undefined') {
   };
 }
 
-export const supabase = createClient(url, key);
+// auth.persistSession=false → Admin-Session überlebt App-Neustart NICHT.
+// Nach Schließen muss erneut Email/Passwort eingegeben werden.
+export const supabase = createClient(url, key, {
+  auth: {
+    persistSession: false,
+    autoRefreshToken: true,
+    detectSessionInUrl: false,
+  },
+});
