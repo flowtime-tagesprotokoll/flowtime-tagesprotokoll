@@ -48,45 +48,7 @@ export function Layout({ children, rightSlot }: LayoutProps) {
 
         <div className="flex items-center gap-2">
           {rightSlot}
-          {session?.kind === 'admin' && (
-            <>
-              <Link
-                to="/"
-                className="btn-ghost text-xs px-3 py-1.5"
-                title="Dashboard"
-              >
-                🏠
-              </Link>
-              <Link
-                to="/reports"
-                className="btn-ghost text-xs px-3 py-1.5"
-                title="Monatsreport"
-              >
-                📊 Report
-              </Link>
-              <Link
-                to="/dokubericht"
-                className="btn-ghost text-xs px-3 py-1.5"
-                title="Dokumentationsbericht (PDF/Druck)"
-              >
-                📑 Doku-Bericht
-              </Link>
-              <Link
-                to="/audit"
-                className="btn-ghost text-xs px-3 py-1.5"
-                title="Audit-Log"
-              >
-                📋 Audit
-              </Link>
-              <Link
-                to="/reminders/preview"
-                className="btn-ghost text-xs px-3 py-1.5"
-                title="Reminder-Vorschau"
-              >
-                🔔 Reminder
-              </Link>
-            </>
-          )}
+          {session?.kind === 'admin' && <AdminMenu />}
           {session && (
             <>
               <button
@@ -140,5 +102,71 @@ export function Layout({ children, rightSlot }: LayoutProps) {
 
       <ShiftReminders />
     </div>
+  );
+}
+
+function AdminMenu() {
+  const [open, setOpen] = useState(false);
+
+  function handleLink() {
+    setOpen(false);
+  }
+
+  return (
+    <div className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className="btn-ghost text-xs px-3 py-1.5"
+        title="Admin-Menü"
+      >
+        ☰ Admin
+      </button>
+      {open && (
+        <>
+          <div
+            className="fixed inset-0 z-30"
+            onClick={() => setOpen(false)}
+          />
+          <div
+            className="absolute right-0 top-full mt-1 w-56 bg-surface border border-border rounded-lg shadow-2xl z-40 py-1.5"
+          >
+            <MenuLink to="/" onClick={handleLink} icon="🏠" label="Dashboard" />
+            <MenuLink to="/reports" onClick={handleLink} icon="📊" label="Monatsreport" />
+            <MenuLink to="/dokubericht" onClick={handleLink} icon="📑" label="Doku-Bericht (PDF)" />
+            <MenuLink to="/audit" onClick={handleLink} icon="📋" label="Audit-Log" />
+            <div className="my-1 border-t border-border-soft" />
+            <MenuLink to="/admin/mitarbeiter" onClick={handleLink} icon="👥" label="Mitarbeiter" />
+            <MenuLink to="/admin/shops" onClick={handleLink} icon="🏪" label="Shops" />
+            <div className="my-1 border-t border-border-soft" />
+            <MenuLink to="/reminders/preview" onClick={handleLink} icon="🔔" label="Reminder-Vorschau" />
+            <MenuLink to="/wartung" onClick={handleLink} icon="🛠" label="Wartung" />
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+function MenuLink({
+  to,
+  icon,
+  label,
+  onClick,
+}: {
+  to: string;
+  icon: string;
+  label: string;
+  onClick: () => void;
+}) {
+  return (
+    <Link
+      to={to}
+      onClick={onClick}
+      className="flex items-center gap-2 px-3 py-2 text-sm hover:bg-surface-2 transition-colors"
+    >
+      <span className="w-5 text-center">{icon}</span>
+      <span>{label}</span>
+    </Link>
   );
 }

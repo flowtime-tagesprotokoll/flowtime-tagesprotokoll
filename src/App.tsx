@@ -8,6 +8,8 @@ import { ReportsPage } from './pages/Reports';
 import { RemindersPreviewPage } from './pages/RemindersPreview';
 import { DokuberichtPage } from './pages/Dokubericht';
 import { WartungPage } from './pages/Wartung';
+import { AdminMitarbeiterPage } from './pages/AdminMitarbeiter';
+import { AdminShopsPage } from './pages/AdminShops';
 import { useAuth } from './lib/authStore';
 import { checkForUpdates } from './lib/updater';
 import { useEffect } from 'react';
@@ -101,6 +103,22 @@ export default function App() {
             element={
               <RequireAuth>
                 <WartungPage />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/admin/mitarbeiter"
+            element={
+              <RequireAuth>
+                <AdminMitarbeiterPage />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/admin/shops"
+            element={
+              <RequireAuth>
+                <AdminShopsPage />
               </RequireAuth>
             }
           />
