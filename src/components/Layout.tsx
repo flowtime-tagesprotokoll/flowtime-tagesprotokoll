@@ -1,6 +1,8 @@
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import type { ReactNode } from 'react';
 import { useAuth } from '../lib/authStore';
+import { DokuReminderModal } from './DokuReminder';
 
 interface LayoutProps {
   children: ReactNode;
@@ -11,9 +13,21 @@ export function Layout({ children, rightSlot }: LayoutProps) {
   const session = useAuth((s) => s.session);
   const signOut = useAuth((s) => s.signOut);
   const navigate = useNavigate();
+  const [showReminder, setShowReminder] = useState(false);
 
-  async function handleSignOut() {
+  function startSignOut() {
+    if (!session) return;
+    // Mitarbeiter & Bezirksleiter müssen erst durch den Doku-Reminder
+    if (session.kind === 'mitarbeiter') {
+      setShowReminder(true);
+    } else {
+      doSignOut();
+    }
+  }
+
+  async function doSignOut() {
     await signOut();
+    setShowReminder(false);
     navigate('/login');
   }
 
@@ -42,7 +56,7 @@ export function Layout({ children, rightSlot }: LayoutProps) {
               </div>
               <button
                 type="button"
-                onClick={handleSignOut}
+                onClick={startSignOut}
                 className="btn-ghost text-xs px-3 py-1.5"
               >
                 Abmelden
@@ -57,6 +71,13 @@ export function Layout({ children, rightSlot }: LayoutProps) {
       <footer className="border-t border-border-soft px-6 py-3 text-xs text-muted-2 text-center">
         Flowtime GmbH · Hannover
       </footer>
+
+      {showReminder && (
+        <DokuReminderModal
+          onCancel={() => setShowReminder(false)}
+          onDone={doSignOut}
+        />
+      )}
     </div>
   );
 }
