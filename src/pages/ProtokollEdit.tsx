@@ -40,6 +40,7 @@ interface ShiftForm {
   guthaben_kundenkarte: string;
   offene_auszahlungen: string;
   kommentar: string;
+  uebergabe_notiz: string;
   einlagen: BewegungZeile[];
   entnahmen: BewegungZeile[];
 }
@@ -67,6 +68,7 @@ function shiftToForm(s: Schicht, bw: Kassenbewegung[]): ShiftForm {
     guthaben_kundenkarte: numToStr(s.guthaben_kundenkarte),
     offene_auszahlungen: numToStr(s.offene_auszahlungen),
     kommentar: s.kommentar ?? '',
+    uebergabe_notiz: s.uebergabe_notiz ?? '',
     einlagen: bw
       .filter((b) => b.typ === 'einlage')
       .sort((a, b) => a.reihenfolge - b.reihenfolge)
@@ -252,6 +254,7 @@ export function ProtokollEditPage() {
           guthaben_kundenkarte: strToNum(form.guthaben_kundenkarte),
           offene_auszahlungen: strToNum(form.offene_auszahlungen),
           kommentar: form.kommentar || null,
+          uebergabe_notiz: form.uebergabe_notiz || null,
         },
       });
       const allBewegungen = [
@@ -390,6 +393,32 @@ export function ProtokollEditPage() {
         {isAdmin && datum !== new Date().toISOString().slice(0, 10) && (
           <div className="bg-warn/10 border border-warn/30 text-warn rounded p-2 text-xs mono">
             ⚠ Admin-Bearbeitung — dies ist nicht das heutige Datum.
+          </div>
+        )}
+
+        {/* Übergabe-Notiz Banner (sichtbar wenn die andere Schicht eine Notiz hinterlassen hat) */}
+        {(s1Form?.uebergabe_notiz || s2Form?.uebergabe_notiz) && (
+          <div className="space-y-2">
+            {s1Form?.uebergabe_notiz?.trim() && (
+              <div className="rounded-lg border-2 border-info bg-info/10 p-3">
+                <div className="text-xs font-bold text-info uppercase tracking-wider mb-1">
+                  📨 Notiz von Schicht 1 (Früh)
+                </div>
+                <div className="whitespace-pre-wrap text-base">
+                  {s1Form.uebergabe_notiz}
+                </div>
+              </div>
+            )}
+            {s2Form?.uebergabe_notiz?.trim() && (
+              <div className="rounded-lg border-2 border-info bg-info/10 p-3">
+                <div className="text-xs font-bold text-info uppercase tracking-wider mb-1">
+                  📨 Notiz von Schicht 2 (Spät)
+                </div>
+                <div className="whitespace-pre-wrap text-base">
+                  {s2Form.uebergabe_notiz}
+                </div>
+              </div>
+            )}
           </div>
         )}
 
@@ -748,6 +777,37 @@ export function ProtokollEditPage() {
                 onChange={(e) => patchS2('kommentar', e.target.value)}
                 rows={2}
                 placeholder="Bemerkungen…"
+                className="field-input"
+              />
+            </div>
+          </div>
+
+          {/* Übergabe-Notiz */}
+          <div className="row section-row" style={{ background: 'linear-gradient(to right, rgba(96,165,250,0.18), rgba(96,165,250,0.08))', borderTop: '2px solid #60a5fa', borderBottom: '2px solid #60a5fa' }}>
+            <div className="section-title" style={{ color: '#60a5fa', fontSize: 13 }}>
+              📨 Übergabe — Notiz an die andere Schicht
+            </div>
+          </div>
+          <div className="row">
+            <div className="label-cell" style={{ color: '#60a5fa' }}>
+              Übergabe
+              <span className="sub">für Folgeschicht</span>
+            </div>
+            <div className="data-cell">
+              <textarea
+                value={s1Form.uebergabe_notiz}
+                onChange={(e) => patchS1('uebergabe_notiz', e.target.value)}
+                rows={2}
+                placeholder="Hinweis für die Spätschicht (z.B. Lampe Tisch 5 kaputt …)"
+                className="field-input"
+              />
+            </div>
+            <div className="data-cell">
+              <textarea
+                value={s2Form.uebergabe_notiz}
+                onChange={(e) => patchS2('uebergabe_notiz', e.target.value)}
+                rows={2}
+                placeholder="Hinweis für die Frühschicht morgen…"
                 className="field-input"
               />
             </div>

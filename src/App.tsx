@@ -7,6 +7,7 @@ import { AuditPage } from './pages/Audit';
 import { ReportsPage } from './pages/Reports';
 import { RemindersPreviewPage } from './pages/RemindersPreview';
 import { DokuberichtPage } from './pages/Dokubericht';
+import { WartungPage } from './pages/Wartung';
 import { useAuth } from './lib/authStore';
 import { checkForUpdates } from './lib/updater';
 import { useEffect } from 'react';
@@ -92,6 +93,14 @@ export default function App() {
             element={
               <RequireAuth>
                 <DokuberichtPage />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/wartung"
+            element={
+              <RequireAuth>
+                <WartungPage />
               </RequireAuth>
             }
           />

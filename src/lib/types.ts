@@ -55,6 +55,7 @@ export interface Schicht {
   offene_auszahlungen: number | null;
   kassenist: number | null;
   kommentar: string | null;
+  uebergabe_notiz: string | null;
 }
 
 export interface AuditEntry {
