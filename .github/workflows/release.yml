@@ -53,3 +53,34 @@ jobs:
           prerelease: false
           includeUpdaterJson: true
           updaterJsonPreferNsis: false
+
+      - name: Build latest.json manually (workaround for tauri-action upload skip)
+        shell: pwsh
+        run: |
+          $bundleDir = "src-tauri/target/release/bundle"
+          $msiPath = Get-ChildItem -Path "$bundleDir/msi" -Filter "*.msi" | Select-Object -First 1
+          $sigPath = Get-ChildItem -Path "$bundleDir/msi" -Filter "*.msi.sig" | Select-Object -First 1
+          if (-not $msiPath -or -not $sigPath) {
+            Write-Error "Konnte .msi oder .sig nicht finden"
+            exit 1
+          }
+          $signature = Get-Content $sigPath.FullName -Raw
+          $version = "${{ github.ref_name }}".TrimStart('v')
+          $msiName = $msiPath.Name
+          $downloadUrl = "https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/$([uri]::EscapeUriString($msiName))"
+          $latestJson = @{
+            version = $version
+            notes = "Flowtime Tagesprotokoll $version"
+            pub_date = (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")
+            platforms = @{
+              "windows-x86_64" = @{
+                signature = $signature.Trim()
+                url = $downloadUrl
+              }
+            }
+          } | ConvertTo-Json -Depth 5
+          $latestJson | Set-Content -Path latest.json -Encoding UTF8
+          Get-Content latest.json
+          gh release upload "${{ github.ref_name }}" latest.json --repo "${{ github.repository }}" --clobber
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
