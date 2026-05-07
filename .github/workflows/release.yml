@@ -52,38 +52,41 @@ jobs:
           releaseDraft: false
           prerelease: false
 
-      - name: Latest.json + .sig bauen und uploaden
+      - name: Latest.json + Updater-ZIP uploaden
         shell: pwsh
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          Write-Host "Suche nach Bundle-Artefakten ..."
-          # Tauri-Action koennte den Bundle-Ordner woanders abgelegt haben — wir suchen rekursiv.
-          $allMsiSig = Get-ChildItem -Path $env:GITHUB_WORKSPACE -Recurse -Filter '*.msi.sig' -File -ErrorAction SilentlyContinue | Where-Object { $_.FullName -notmatch 'node_modules' }
-          if (-not $allMsiSig -or $allMsiSig.Count -eq 0) {
+          # Tauri 2 erzeugt fuer den Updater eine .msi.zip + .msi.zip.sig
+          # (createUpdaterArtifacts: true). DAS muss latest.json referenzieren —
+          # nicht die .msi direkt, sonst kann der Updater nichts entpacken.
+          Write-Host "Suche nach .msi.zip Artefakten ..."
+          $zipSig = Get-ChildItem -Path $env:GITHUB_WORKSPACE -Recurse -Filter '*.msi.zip.sig' -File -ErrorAction SilentlyContinue |
+            Where-Object { $_.FullName -notmatch 'node_modules' } | Sort-Object LastWriteTime -Descending | Select-Object -First 1
+
+          if (-not $zipSig) {
             Write-Host "Suche fortgesetzt unter D: ..."
-            $allMsiSig = Get-ChildItem -Path 'D:\' -Recurse -Filter '*.msi.sig' -File -ErrorAction SilentlyContinue
+            $zipSig = Get-ChildItem -Path 'D:\' -Recurse -Filter '*.msi.zip.sig' -File -ErrorAction SilentlyContinue |
+              Sort-Object LastWriteTime -Descending | Select-Object -First 1
           }
 
-          if (-not $allMsiSig -or $allMsiSig.Count -eq 0) {
-            Write-Error "Konnte .msi.sig nicht finden. Updater-Signatur wurde wohl nicht erzeugt."
+          if (-not $zipSig) {
+            Write-Error "Konnte .msi.zip.sig nicht finden. Updater-Signatur wurde nicht erzeugt."
             exit 1
           }
 
-          $msiSig = $allMsiSig | Sort-Object LastWriteTime -Descending | Select-Object -First 1
-          Write-Host "Gefunden: $($msiSig.FullName)"
-
-          $msiPath = $msiSig.FullName -replace '\.sig$', ''
-          if (-not (Test-Path $msiPath)) {
-            Write-Error "Zugehoerige .msi nicht gefunden: $msiPath"
+          $zipPath = $zipSig.FullName -replace '\.sig$', ''
+          if (-not (Test-Path $zipPath)) {
+            Write-Error "Zugehoerige .msi.zip nicht gefunden: $zipPath"
             exit 1
           }
-          $msi = Get-Item $msiPath
+          $zip = Get-Item $zipPath
+          Write-Host "Updater-Zip: $($zip.FullName) ($([math]::Round($zip.Length/1MB,2)) MB)"
 
-          $signature = (Get-Content $msiSig.FullName -Raw).Trim()
+          $signature = (Get-Content $zipSig.FullName -Raw).Trim()
           $version   = "${{ github.ref_name }}".TrimStart('v')
-          $msiName   = $msi.Name
-          $downloadUrl = "https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/" + [uri]::EscapeDataString($msiName)
+          $zipName   = $zip.Name
+          $downloadUrl = "https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/" + [uri]::EscapeDataString($zipName)
 
           $latest = [ordered]@{
             version   = $version
@@ -104,5 +107,6 @@ jobs:
           Write-Host "======================="
 
           gh release upload "${{ github.ref_name }}" "$latestPath" --repo "${{ github.repository }}" --clobber
-          gh release upload "${{ github.ref_name }}" "$($msiSig.FullName)" --repo "${{ github.repository }}" --clobber
-          Write-Host "OK: latest.json + .msi.sig hochgeladen."
+          gh release upload "${{ github.ref_name }}" "$($zip.FullName)" --repo "${{ github.repository }}" --clobber
+          gh release upload "${{ github.ref_name }}" "$($zipSig.FullName)" --repo "${{ github.repository }}" --clobber
+          Write-Host "OK: latest.json + .msi.zip + .sig hochgeladen."

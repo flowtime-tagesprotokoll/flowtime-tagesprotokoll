@@ -75,7 +75,9 @@ export function LoginPage() {
                 onClick={() => handleSelectProfile(p)}
                 className="bg-surface border border-border rounded-lg p-4 text-left hover:border-accent hover:bg-surface-2 transition-colors"
               >
-                <div className="text-base font-semibold">{p.name}</div>
+                <div className="text-base font-semibold">
+                  {p.name.split(' ')[0]}
+                </div>
                 <div className="text-xs text-muted uppercase tracking-wider mt-1">
                   {p.rolle}
                 </div>

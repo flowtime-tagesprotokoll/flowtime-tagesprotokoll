@@ -48,14 +48,14 @@ export function PinKeypad({
   // auto-submit when 4 digits entered
   useEffect(() => {
     if (!confirm && pin.length === 4) {
-      onSubmit(pin).catch(() => {});
+      Promise.resolve(onSubmit(pin)).catch(() => {});
     }
     if (confirm && step === 'first' && pin.length === 4) {
       setStep('second');
     }
     if (confirm && step === 'second' && pin2.length === 4) {
       if (pin === pin2) {
-        onSubmit(pin).catch(() => {});
+        Promise.resolve(onSubmit(pin)).catch(() => {});
       } else {
         setLocalErr('PINs stimmen nicht überein. Bitte neu.');
         setPin('');
