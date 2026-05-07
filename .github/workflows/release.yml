@@ -33,33 +33,52 @@ jobs:
       - name: Install npm deps
         run: npm ci
 
-      - name: Tauri Build
-        shell: pwsh
+      - name: Build with Tauri Action (erzeugt msi + .sig + lädt msi hoch)
+        uses: tauri-apps/tauri-action@v0
         env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
           VITE_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}
-        run: npm run tauri:build
+        with:
+          tagName: ${{ github.ref_name }}
+          releaseName: 'Flowtime Tagesprotokoll ${{ github.ref_name }}'
+          releaseBody: |
+            Automatisch gebaut von GitHub Actions.
 
-      - name: Collect artifacts
-        id: artifacts
+            **Installation:** `.msi`-Datei runterladen und ausführen.
+            **Update:** Bestehende Installationen aktualisieren sich automatisch beim nächsten Start.
+          releaseDraft: false
+          prerelease: false
+
+      - name: Latest.json + .sig bauen und uploaden
         shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          $bundleRoot = Join-Path $env:GITHUB_WORKSPACE 'src-tauri/target/release/bundle'
-          Write-Host "Bundle root: $bundleRoot"
+          Write-Host "Suche nach Bundle-Artefakten ..."
+          # Tauri-Action koennte den Bundle-Ordner woanders abgelegt haben — wir suchen rekursiv.
+          $allMsiSig = Get-ChildItem -Path $env:GITHUB_WORKSPACE -Recurse -Filter '*.msi.sig' -File -ErrorAction SilentlyContinue | Where-Object { $_.FullName -notmatch 'node_modules' }
+          if (-not $allMsiSig -or $allMsiSig.Count -eq 0) {
+            Write-Host "Suche fortgesetzt unter D: ..."
+            $allMsiSig = Get-ChildItem -Path 'D:\' -Recurse -Filter '*.msi.sig' -File -ErrorAction SilentlyContinue
+          }
 
-          $msi  = Get-ChildItem -Path "$bundleRoot/msi"  -Filter '*.msi'      -File -ErrorAction SilentlyContinue | Select-Object -First 1
-          $msiSig = Get-ChildItem -Path "$bundleRoot/msi"  -Filter '*.msi.sig'  -File -ErrorAction SilentlyContinue | Select-Object -First 1
-          $exe  = Get-ChildItem -Path "$bundleRoot/nsis" -Filter '*-setup.exe' -File -ErrorAction SilentlyContinue | Select-Object -First 1
-          $exeSig = Get-ChildItem -Path "$bundleRoot/nsis" -Filter '*-setup.exe.sig' -File -ErrorAction SilentlyContinue | Select-Object -First 1
-
-          if (-not $msi -or -not $msiSig) {
-            Write-Host "Inhalt von $bundleRoot :"
-            Get-ChildItem $bundleRoot -Recurse -ErrorAction SilentlyContinue | Select-Object FullName
-            Write-Error "MSI oder MSI-Signatur nicht gefunden."
+          if (-not $allMsiSig -or $allMsiSig.Count -eq 0) {
+            Write-Error "Konnte .msi.sig nicht finden. Updater-Signatur wurde wohl nicht erzeugt."
             exit 1
           }
+
+          $msiSig = $allMsiSig | Sort-Object LastWriteTime -Descending | Select-Object -First 1
+          Write-Host "Gefunden: $($msiSig.FullName)"
+
+          $msiPath = $msiSig.FullName -replace '\.sig$', ''
+          if (-not (Test-Path $msiPath)) {
+            Write-Error "Zugehoerige .msi nicht gefunden: $msiPath"
+            exit 1
+          }
+          $msi = Get-Item $msiPath
 
           $signature = (Get-Content $msiSig.FullName -Raw).Trim()
           $version   = "${{ github.ref_name }}".TrimStart('v')
@@ -80,47 +99,10 @@ jobs:
           $latestPath = Join-Path $env:RUNNER_TEMP 'latest.json'
           $latest | ConvertTo-Json -Depth 5 | Set-Content -Path $latestPath -Encoding UTF8
 
-          # Stage all assets in a single folder for upload
-          $stage = Join-Path $env:RUNNER_TEMP 'release-assets'
-          New-Item -ItemType Directory -Path $stage -Force | Out-Null
-          Copy-Item $msi.FullName    $stage
-          Copy-Item $msiSig.FullName $stage
-          if ($exe)    { Copy-Item $exe.FullName    $stage }
-          if ($exeSig) { Copy-Item $exeSig.FullName $stage }
-          Copy-Item $latestPath $stage
+          Write-Host "===== latest.json ====="
+          Get-Content $latestPath
+          Write-Host "======================="
 
-          Write-Host "Staged release assets:"
-          Get-ChildItem $stage | Select-Object Name, Length | Format-Table
-
-          # Output stage path for the next step
-          "stage=$stage" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
-
-      - name: Create / update GitHub Release with all assets
-        shell: pwsh
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          $tag   = "${{ github.ref_name }}"
-          $stage = "${{ steps.artifacts.outputs.stage }}"
-          $title = "Flowtime Tagesprotokoll $tag"
-          $body  = @"
-          Automatisch gebaut von GitHub Actions.
-
-          **Installation:** ``.msi``-Datei runterladen und ausführen.
-          **Update:** Bestehende Installationen aktualisieren sich automatisch beim nächsten Start (``latest.json`` Endpoint).
-          "@
-
-          # Erstelle Release falls nicht da, sonst überschreiben wir Assets via --clobber
-          $exists = $true
-          gh release view $tag --repo "${{ github.repository }}" *> $null
-          if ($LASTEXITCODE -ne 0) { $exists = $false }
-
-          if (-not $exists) {
-            gh release create $tag --repo "${{ github.repository }}" --title $title --notes $body
-          } else {
-            gh release edit $tag --repo "${{ github.repository }}" --title $title --notes $body
-          }
-
-          $files = Get-ChildItem $stage -File
-          gh release upload $tag --repo "${{ github.repository }}" --clobber @($files.FullName)
-          Write-Host "Hochgeladen: $($files.Name -join ', ')"
+          gh release upload "${{ github.ref_name }}" "$latestPath" --repo "${{ github.repository }}" --clobber
+          gh release upload "${{ github.ref_name }}" "$($msiSig.FullName)" --repo "${{ github.repository }}" --clobber
+          Write-Host "OK: latest.json + .msi.sig hochgeladen."
