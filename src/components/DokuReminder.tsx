@@ -12,28 +12,29 @@ interface Props {
 interface CategoryItem {
   key: string;
   label: string;
+  emoji: string;
 }
 
 const KAT_JSP: CategoryItem[] = [
-  { key: 'spielverhalten_ansprache', label: 'Gast auf Spielverhalten angesprochen' },
-  { key: 'beratung_kontakte', label: 'Kontaktdaten Beratung weitergegeben' },
-  { key: 'flyer_ausgabe', label: 'Infomaterial / Flyer weitergegeben' },
-  { key: 'js_minderjaehrig_abgewiesen', label: 'Jugendschutz: Minderjährig — Eintritt verweigert' },
-  { key: 'js_volljaehrig_kontrolliert', label: 'Jugendschutz: Auf Verdacht kontrolliert, volljährig — Eintritt' },
-  { key: 'gespraech_verantwortliche', label: 'Gespräch mit Verantwortlichem über Spielgast' },
-  { key: 'spiel_ausschluss', label: 'Auffällige Person vom Spiel ausgeschlossen' },
-  { key: 'spielersperre', label: 'Spielersperre (Selbst- / Fremdsperre)' },
-  { key: 'hausverbot', label: 'Hausverbot' },
-  { key: 'gesperrte_person_abgewiesen', label: 'Gesperrte Person am Zutritt gehindert' },
-  { key: 'oasis_aufmerksam', label: 'Gast auf Oasis-Spielersperre aufmerksam gemacht' },
+  { key: 'spielverhalten_ansprache', emoji: '💬', label: 'Gast auf Spielverhalten angesprochen' },
+  { key: 'beratung_kontakte', emoji: '📞', label: 'Kontaktdaten Beratung weitergegeben' },
+  { key: 'flyer_ausgabe', emoji: '📄', label: 'Infomaterial / Flyer weitergegeben' },
+  { key: 'js_minderjaehrig_abgewiesen', emoji: '🚫', label: 'Minderjährig — Eintritt verweigert' },
+  { key: 'js_volljaehrig_kontrolliert', emoji: '🪪', label: 'Auf Verdacht kontrolliert — volljährig' },
+  { key: 'gespraech_verantwortliche', emoji: '🗣️', label: 'Gespräch mit Verantwortlichem über Spielgast' },
+  { key: 'spiel_ausschluss', emoji: '⛔', label: 'Auffällige Person vom Spiel ausgeschlossen' },
+  { key: 'spielersperre', emoji: '🛑', label: 'Spielersperre (Selbst- / Fremdsperre)' },
+  { key: 'hausverbot', emoji: '🚷', label: 'Hausverbot' },
+  { key: 'gesperrte_person_abgewiesen', emoji: '🔒', label: 'Gesperrte Person am Zutritt gehindert' },
+  { key: 'oasis_aufmerksam', emoji: '👁️', label: 'Auf Oasis-Spielersperre aufmerksam gemacht' },
 ];
 
 const KAT_GW: CategoryItem[] = [
-  { key: 'gw_hohe_einzahlung_kleine_quoten', label: 'Hohe Einzahlung, kaum Spiel / nur kleine Quoten' },
-  { key: 'gw_auszahlung_mit_nachweis', label: 'Will hohe Einzahlung als Gewinn auszahlen + Nachweis verlangt' },
-  { key: 'gw_fremdkonto_auszahlung', label: 'Versuch Auszahlung über fremdes Konto' },
-  { key: 'gw_falsche_identitaet', label: 'Falsche Identitätsangabe' },
-  { key: 'gw_fremde_gewinnnachweise', label: 'Frage nach fremden Gewinnnachweisen' },
+  { key: 'gw_hohe_einzahlung_kleine_quoten', emoji: '💸', label: 'Hohe Einzahlung — kaum Spiel / nur kleine Quoten' },
+  { key: 'gw_auszahlung_mit_nachweis', emoji: '🧾', label: 'Hohe Einzahlung als Gewinn auszahlen + Nachweis verlangt' },
+  { key: 'gw_fremdkonto_auszahlung', emoji: '🔀', label: 'Versuch Auszahlung über fremdes Konto' },
+  { key: 'gw_falsche_identitaet', emoji: '🎭', label: 'Falsche Identitätsangabe' },
+  { key: 'gw_fremde_gewinnnachweise', emoji: '📋', label: 'Frage nach fremden Gewinnnachweisen' },
 ];
 
 export function DokuReminderModal({ logoutMode = false, onCancel, onDone }: Props) {
@@ -105,34 +106,41 @@ export function DokuReminderModal({ logoutMode = false, onCancel, onDone }: Prop
   }
 
   return (
-    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-auto">
-      <div className="bg-surface border border-border rounded-lg p-5 w-full max-w-2xl my-4 space-y-4">
+    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-start justify-center p-3 sm:p-6 overflow-auto">
+      <div className="bg-surface border border-border rounded-xl p-5 sm:p-6 w-full max-w-3xl my-4 space-y-5 shadow-2xl">
         {step === 'ask' && logoutMode && (
           <>
             <div>
-              <h2 className="text-lg font-bold flex items-center gap-2">
-                <span className="text-warn">⚠</span> Dokumentation vor Logout
-              </h2>
-              <p className="text-sm text-muted mt-2">
-                Hattest du heute einen <strong>dokumentationspflichtigen Vorfall</strong> in Sachen{' '}
-                <strong>Jugend- und Spielerschutz</strong> oder <strong>Geldwäsche</strong>?
+              <div className="flex items-center gap-3">
+                <div className="text-4xl">⚠️</div>
+                <div>
+                  <h2 className="text-2xl font-bold">Dokumentation vor Logout</h2>
+                  <p className="text-base text-muted mt-1">
+                    Hattest du heute einen <strong className="text-warn">dokumentationspflichtigen Vorfall</strong>?
+                  </p>
+                </div>
+              </div>
+              <p className="text-sm text-muted mt-3">
+                Jugend- und Spielerschutz, Geldwäsche-Verdacht, Hausverbot, Spielersperre etc.
               </p>
             </div>
-            <div className="grid grid-cols-2 gap-2 pt-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
               <button
                 type="button"
                 onClick={handleNein}
                 disabled={busy}
-                className="btn-ghost"
+                className="rounded-xl bg-surface-2 border-2 border-border hover:border-plus py-5 px-4 text-base font-semibold transition-colors disabled:opacity-50"
               >
+                <div className="text-3xl mb-1">✓</div>
                 Nein, alles ok
               </button>
               <button
                 type="button"
                 onClick={() => setStep('doku')}
                 disabled={busy}
-                className="btn-primary"
+                className="rounded-xl bg-warn/20 border-2 border-warn text-warn hover:bg-warn/30 py-5 px-4 text-base font-bold transition-colors disabled:opacity-50"
               >
+                <div className="text-3xl mb-1">📋</div>
                 Ja, dokumentieren
               </button>
             </div>
@@ -149,15 +157,25 @@ export function DokuReminderModal({ logoutMode = false, onCancel, onDone }: Prop
 
         {step === 'doku' && (
           <>
-            <div>
-              <h2 className="text-lg font-bold">📋 Vorfall dokumentieren</h2>
-              <p className="text-sm text-muted mt-1">
-                Wähle alle zutreffenden Punkte aus. Mehrfachauswahl möglich.
-              </p>
+            <div className="flex items-start justify-between gap-3 flex-wrap">
+              <div>
+                <h2 className="text-2xl font-bold flex items-center gap-2">
+                  <span className="text-3xl">📋</span> Vorfall dokumentieren
+                </h2>
+                <p className="text-sm text-muted mt-1">
+                  Tippe auf die zutreffenden Felder. Mehrfachauswahl möglich.
+                </p>
+              </div>
+              {selected.size > 0 && (
+                <div className="bg-accent/20 border border-accent/40 text-accent rounded-full px-3 py-1 text-sm font-bold">
+                  {selected.size} ausgewählt
+                </div>
+              )}
             </div>
 
             <CategoryBlock
               title="Jugend- und Spielerschutz"
+              icon="⚖️"
               accent="#fbbf24"
               items={KAT_JSP}
               selected={selected}
@@ -166,37 +184,38 @@ export function DokuReminderModal({ logoutMode = false, onCancel, onDone }: Prop
 
             <CategoryBlock
               title="Verdacht auf Geldwäsche"
+              icon="💰"
               accent="#f87171"
               items={KAT_GW}
               selected={selected}
               onToggle={toggle}
             />
 
-            <label className="block space-y-1">
-              <span className="text-xs text-muted uppercase tracking-wider">
-                Sonstiges / Details
+            <label className="block space-y-2">
+              <span className="text-sm font-semibold text-muted uppercase tracking-wider">
+                ✏️ Sonstiges / Details
               </span>
               <textarea
                 value={text}
                 onChange={(e) => setText(e.target.value)}
                 rows={3}
                 placeholder="Zusätzliche Beschreibung (Uhrzeit, Personen, Verlauf, …)"
-                className="field-input"
+                className="field-input text-base"
               />
             </label>
 
             {err && (
-              <div className="text-sm text-minus bg-minus/10 border border-minus/30 rounded px-3 py-2">
+              <div className="text-sm text-minus bg-minus/10 border border-minus/30 rounded-lg px-4 py-3">
                 {err}
               </div>
             )}
 
-            <div className="grid grid-cols-2 gap-2 pt-1">
+            <div className="grid grid-cols-2 gap-3 pt-2">
               <button
                 type="button"
                 onClick={logoutMode ? () => setStep('ask') : onCancel}
                 disabled={busy}
-                className="btn-ghost"
+                className="btn-ghost py-3 text-base"
               >
                 {logoutMode ? '← Zurück' : 'Abbrechen'}
               </button>
@@ -204,13 +223,13 @@ export function DokuReminderModal({ logoutMode = false, onCancel, onDone }: Prop
                 type="button"
                 onClick={handleSpeichern}
                 disabled={busy}
-                className="btn-primary"
+                className="btn-primary py-3 text-base font-bold"
               >
                 {busy
                   ? 'Speichere …'
                   : logoutMode
-                    ? 'Speichern & Abmelden'
-                    : 'Speichern'}
+                    ? '💾 Speichern & Abmelden'
+                    : '💾 Speichern'}
               </button>
             </div>
           </>
@@ -222,46 +241,53 @@ export function DokuReminderModal({ logoutMode = false, onCancel, onDone }: Prop
 
 function CategoryBlock({
   title,
+  icon,
   accent,
   items,
   selected,
   onToggle,
 }: {
   title: string;
+  icon: string;
   accent: string;
   items: CategoryItem[];
   selected: Set<string>;
   onToggle: (key: string) => void;
 }) {
   return (
-    <div className="space-y-2">
+    <div className="space-y-3">
       <div
-        className="text-xs uppercase tracking-wider font-semibold"
+        className="flex items-center gap-2 text-base font-bold uppercase tracking-wider"
         style={{ color: accent }}
       >
+        <span className="text-2xl">{icon}</span>
         {title}
       </div>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
         {items.map((i) => {
           const checked = selected.has(i.key);
           return (
-            <label
+            <button
               key={i.key}
-              className="flex items-start gap-2 p-2 rounded border cursor-pointer transition-colors"
+              type="button"
+              onClick={() => onToggle(i.key)}
+              className="flex items-center gap-3 p-3 rounded-lg border-2 cursor-pointer transition-all text-left"
               style={{
                 borderColor: checked ? accent : '#2a2a2a',
-                background: checked ? `${accent}1a` : 'transparent',
+                background: checked ? `${accent}26` : '#1c1c1c',
+                color: checked ? accent : '#f5f5f5',
+                fontWeight: checked ? 600 : 400,
+                transform: checked ? 'scale(0.99)' : 'scale(1)',
               }}
             >
-              <input
-                type="checkbox"
-                checked={checked}
-                onChange={() => onToggle(i.key)}
-                className="mt-0.5 flex-shrink-0"
-                style={{ accentColor: accent }}
-              />
-              <span className="text-sm leading-snug">{i.label}</span>
-            </label>
+              <span className="text-2xl flex-shrink-0">{i.emoji}</span>
+              <span className="text-sm leading-snug flex-1">{i.label}</span>
+              {checked && (
+                <span className="text-xl flex-shrink-0" style={{ color: accent }}>
+                  ✓
+                </span>
+              )}
+            </button>
           );
         })}
       </div>

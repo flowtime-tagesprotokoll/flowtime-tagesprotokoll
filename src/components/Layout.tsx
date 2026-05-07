@@ -71,6 +71,13 @@ export function Layout({ children, rightSlot }: LayoutProps) {
               >
                 📋 Audit
               </Link>
+              <Link
+                to="/reminders/preview"
+                className="btn-ghost text-xs px-3 py-1.5"
+                title="Reminder-Vorschau"
+              >
+                🔔 Reminder
+              </Link>
             </>
           )}
           {session && (
@@ -78,10 +85,12 @@ export function Layout({ children, rightSlot }: LayoutProps) {
               <button
                 type="button"
                 onClick={() => setShowDoku(true)}
-                className="btn-ghost text-xs px-3 py-1.5"
-                title="Vorfall dokumentieren"
+                className="rounded-lg bg-warn/20 border-2 border-warn text-warn hover:bg-warn/30 font-bold px-3 py-1.5 text-sm transition-colors flex items-center gap-1.5"
+                title="Vorfall dokumentieren / Dokumentationsmeldung"
               >
-                📋 + Doku
+                <span className="text-base">📋</span>
+                <span className="hidden sm:inline">Vorfall dokumentieren</span>
+                <span className="sm:hidden">Doku</span>
               </button>
               <div className="text-right text-xs leading-tight ml-2">
                 <div className="text-text">{session.profile.name}</div>

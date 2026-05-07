@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { useAuth } from '../lib/authStore';
 import { isTauri } from '../lib/updater';
@@ -24,25 +24,28 @@ interface Reminder {
   body: ReactNode;
   /** Wenn gesetzt: zwei Antwort-Buttons. */
   yesNo?: { yesLabel: string; noLabel: string; noBody: ReactNode };
+  /** Akzentfarbe. */
+  accent: string;
 }
 
-function buildReminders(name: string): Reminder[] {
+export function buildReminders(name: string): Reminder[] {
   return [
     {
       emoji: '⚖️',
+      accent: '#fbbf24',
       title: 'Jugend- und Spielerschutz',
       body: (
         <>
-          <p>
-            Hallo <strong>{name}</strong>! Bitte denk dran: <strong>Jeder Vorfall</strong>{' '}
-            in Sachen Jugend- und Spielerschutz muss <strong>dokumentiert</strong>{' '}
-            werden — wir sind gesetzlich dazu verpflichtet, und die Berichte gehen
-            ans Ministerium.
+          <p className="text-lg leading-relaxed">
+            Hallo <strong>{name}</strong>! Bitte denk dran:{' '}
+            <strong>Jeder Vorfall</strong> in Sachen Jugend- und Spielerschutz muss{' '}
+            <strong>dokumentiert</strong> werden — wir sind gesetzlich dazu
+            verpflichtet, und die Berichte gehen ans Ministerium.
           </p>
-          <p className="text-sm text-muted mt-2">
+          <p className="text-base text-muted mt-3">
             Nutze oben rechts den Button{' '}
-            <span className="bg-surface-2 border border-border px-2 py-0.5 rounded mono">
-              📋 + Doku
+            <span className="bg-warn/20 border-2 border-warn text-warn font-bold px-2 py-0.5 rounded">
+              📋 Vorfall dokumentieren
             </span>{' '}
             sobald etwas passiert.
           </p>
@@ -51,9 +54,10 @@ function buildReminders(name: string): Reminder[] {
     },
     {
       emoji: '🧹',
+      accent: '#4ade80',
       title: 'Ordnung & Sauberkeit',
       body: (
-        <p>
+        <p className="text-lg leading-relaxed">
           Hi <strong>{name}</strong>! Achte bitte stets auf{' '}
           <strong>Ordnung und Sauberkeit</strong> im gesamten Laden — das gehört
           genauso zur Schicht wie die Kasse.
@@ -62,62 +66,64 @@ function buildReminders(name: string): Reminder[] {
     },
     {
       emoji: '🪪',
+      accent: '#60a5fa',
       title: 'Ausweiskontrolle',
       body: (
-        <p>
-          <strong>{name}</strong> — bei jedem Ausweis bitte <strong>auf das Foto</strong>{' '}
-          schauen (passt es zur Person?) und auf die <strong>Gültigkeit</strong>{' '}
-          (abgelaufen = nicht gültig). Im Zweifel lieber einmal mehr prüfen als zu
-          wenig.
+        <p className="text-lg leading-relaxed">
+          <strong>{name}</strong> — bei jedem Ausweis bitte{' '}
+          <strong>auf das Foto</strong> schauen (passt es zur Person?) und auf die{' '}
+          <strong>Gültigkeit</strong> (abgelaufen = nicht gültig). Im Zweifel
+          lieber einmal mehr prüfen als zu wenig.
         </p>
       ),
     },
     {
       emoji: '🕴️',
+      accent: '#a78bfa',
       title: 'PEP — Politisch Exponierte Person',
       body: (
-        <p>
-          Weißt du noch, was ein <strong>PEP</strong> ist?{' '}
-          <span className="text-muted">
-            (Politiker, Behördenleiter, Richter, Familie/enge Vertraute solcher
-            Personen.)
-          </span>
-          <br />
-          Wenn du den Verdacht hast, einen PEP vor dir zu haben:{' '}
-          <strong>sofort dem Chef melden</strong>.
-        </p>
+        <>
+          <p className="text-lg leading-relaxed">
+            Weißt du noch, was ein <strong>PEP</strong> ist?
+          </p>
+          <p className="text-base text-muted mt-2">
+            Politiker, Behördenleiter, Richter, Familie / enge Vertraute solcher
+            Personen.
+          </p>
+          <p className="text-lg mt-3">
+            Verdacht auf einen PEP? <strong>Sofort dem Chef melden.</strong>
+          </p>
+        </>
       ),
     },
     {
       emoji: '💰',
+      accent: '#f87171',
       title: 'Geldwäsche-Verdachtsmeldung',
       body: (
-        <p>
+        <p className="text-lg leading-relaxed">
           <strong>{name}</strong> — bei Behördenkontrollen wirst du gefragt,
-          wie man eine <strong>Geldwäsche-Verdachtsmeldung</strong> abgibt. Du musst
-          das wissen.
+          wie man eine <strong>Geldwäsche-Verdachtsmeldung</strong> abgibt. Du
+          musst das wissen.
           <br />
-          <span className="text-sm text-muted">Weißt du, wie das geht?</span>
+          <span className="text-base text-muted">Weißt du, wie das geht?</span>
         </p>
       ),
       yesNo: {
         yesLabel: 'Ja, ich weiß es',
         noLabel: 'Nein, kurze Auffrischung',
         noBody: (
-          <div className="space-y-2 text-sm">
-            <p>
-              Bei verdächtigem Verhalten (siehe Doku-Modal "Verdacht auf Geldwäsche")
-              sofort das interne Verfahren auslösen:
-            </p>
-            <ol className="list-decimal pl-5 space-y-1">
+          <div className="space-y-2 text-base">
+            <p>Bei Verdacht auf Geldwäsche:</p>
+            <ol className="list-decimal pl-5 space-y-2">
               <li>
-                <strong>Ruhig bleiben</strong>, Kunden ganz normal weiter behandeln —
-                keine direkte Konfrontation.
+                <strong>Ruhig bleiben</strong>, Kunden ganz normal weiter
+                behandeln — keine direkte Konfrontation.
               </li>
               <li>
-                Beobachtungen <strong>sofort dokumentieren</strong> (Doku-Button
-                oben). Möglichst viele Details: Betrag, Uhrzeit, Verhalten,
-                Aussehen, andere Personen.
+                Beobachtungen <strong>sofort dokumentieren</strong> über den
+                Doku-Button. Möglichst viele Details: Betrag, Uhrzeit,
+                Verhalten, andere Personen.
               </li>
               <li>
                 <strong>Tamer / Verantwortlichen sofort informieren</strong>{' '}
@@ -128,8 +134,8 @@ function buildReminders(name: string): Reminder[] {
                 <strong>goAML</strong> bei der FIU (Zoll) ein.
               </li>
               <li>
-                Den Kunden gegenüber niemals erwähnen, dass eine Meldung erfolgt
-                ("Tipping-Off"-Verbot).
+                Den Kunden gegenüber <strong>niemals erwähnen</strong>, dass
+                eine Meldung erfolgt ("Tipping-Off"-Verbot).
               </li>
             </ol>
           </div>
@@ -138,94 +144,170 @@ function buildReminders(name: string): Reminder[] {
     },
     {
       emoji: '☀️',
+      accent: '#d4ff00',
       title: 'Du schaffst das!',
       body: (
-        <p>
-          Bleib immer <strong>aufmerksam</strong>, <strong>freundlich</strong> und{' '}
-          <strong>sachlich</strong>. Auch wenn's mal stressig wird — ruhig bleiben,
-          Probleme höflich lösen. <strong>Du schaffst das!</strong> 💪
+        <p className="text-lg leading-relaxed">
+          Bleib immer <strong>aufmerksam</strong>, <strong>freundlich</strong>{' '}
+          und <strong>sachlich</strong>. Auch wenn's mal stressig wird — ruhig
+          bleiben, Probleme höflich lösen.{' '}
+          <strong>Du schaffst das!</strong> 💪
         </p>
       ),
     },
   ];
 }
 
-const STORAGE_KEY = 'flowtime_reminders_shown_session';
-
+/** Schicht-Reminder-Steuerung: zeigt einen Reminder, plant den nächsten. */
 export function ShiftReminders() {
   const session = useAuth((s) => s.session);
-  const [step, setStep] = useState<number>(-1); // -1 = nicht aktiv
+  const [activeIndex, setActiveIndex] = useState<number | null>(null);
   const [showNoDetail, setShowNoDetail] = useState(false);
+  const orderRef = useRef<number[]>([]);
+  const cursorRef = useRef(0);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Zeigen, sobald ein Mitarbeiter eingeloggt ist und noch nicht in dieser Session gesehen
+  // Random-Intervall in Minuten zwischen min und max (inkl.)
+  function nextDelayMs(): number {
+    const minMin = 25;
+    const maxMin = 75;
+    const min = Math.floor(Math.random() * (maxMin - minMin + 1)) + minMin;
+    return min * 60 * 1000;
+  }
+
+  function shuffle<T>(arr: T[]): T[] {
+    const a = [...arr];
+    for (let i = a.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a;
+  }
+
   useEffect(() => {
     if (!session) return;
     if (session.kind !== 'mitarbeiter') return;
-    const flag = sessionStorage.getItem(STORAGE_KEY);
-    if (flag === session.profile.id) return;
-    setStep(0);
+
+    const reminders = buildReminders(session.profile.name);
+    orderRef.current = shuffle([...reminders.keys()]);
+    cursorRef.current = 0;
+
+    function scheduleNext() {
+      if (timerRef.current) clearTimeout(timerRef.current);
+      timerRef.current = setTimeout(() => {
+        const idx = orderRef.current[cursorRef.current % orderRef.current.length];
+        cursorRef.current++;
+        // Wenn die ganze Liste durch ist, neu mischen
+        if (cursorRef.current >= orderRef.current.length) {
+          orderRef.current = shuffle([...reminders.keys()]);
+          cursorRef.current = 0;
+        }
+        setActiveIndex(idx);
+        bringToFront();
+      }, nextDelayMs());
+    }
+
+    scheduleNext();
+    return () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+    };
   }, [session]);
 
-  // Bei jedem Step-Wechsel das Fenster nach vorne holen (auch wenn minimiert)
-  useEffect(() => {
-    if (step >= 0) bringToFront();
-  }, [step]);
-
-  if (!session || session.kind !== 'mitarbeiter' || step < 0) return null;
-
-  const reminders = buildReminders(session.profile.name);
-  const r = reminders[step];
-  if (!r) return null;
-  const isLast = step === reminders.length - 1;
-
-  function next() {
-    setShowNoDetail(false);
-    if (isLast) {
-      sessionStorage.setItem(STORAGE_KEY, session!.profile.id);
-      setStep(-1);
-    } else {
-      setStep((s) => s + 1);
-    }
+  if (!session || session.kind !== 'mitarbeiter' || activeIndex === null) {
+    return null;
   }
 
+  const reminders = buildReminders(session.profile.name);
+  const r = reminders[activeIndex];
+
+  function dismiss() {
+    setShowNoDetail(false);
+    setActiveIndex(null);
+    // nächsten Reminder einplanen
+    if (timerRef.current) clearTimeout(timerRef.current);
+    timerRef.current = setTimeout(() => {
+      const reminders = buildReminders(session!.profile.name);
+      const idx = orderRef.current[cursorRef.current % orderRef.current.length];
+      cursorRef.current++;
+      if (cursorRef.current >= orderRef.current.length) {
+        orderRef.current = shuffle([...reminders.keys()]);
+        cursorRef.current = 0;
+      }
+      setActiveIndex(idx);
+      bringToFront();
+    }, nextDelayMs());
+  }
+
+  return <ReminderModal reminder={r} showNoDetail={showNoDetail} onShowNoDetail={() => setShowNoDetail(true)} onClose={dismiss} />;
+}
+
+interface ReminderModalProps {
+  reminder: Reminder;
+  showNoDetail: boolean;
+  onShowNoDetail: () => void;
+  onClose: () => void;
+}
+
+export function ReminderModal({ reminder, showNoDetail, onShowNoDetail, onClose }: ReminderModalProps) {
   return (
-    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[60] flex items-center justify-center p-4 overflow-auto">
-      <div className="bg-surface border border-accent rounded-lg p-5 w-full max-w-lg space-y-4 shadow-2xl">
-        <div className="flex items-center gap-3">
-          <div className="text-3xl">{r.emoji}</div>
+    <div className="fixed inset-0 bg-black/85 backdrop-blur-sm z-[60] flex items-center justify-center p-4 overflow-auto">
+      <div
+        className="bg-surface border-4 rounded-xl p-6 w-full max-w-xl space-y-5 shadow-2xl"
+        style={{ borderColor: reminder.accent }}
+      >
+        <div className="flex items-center gap-4">
+          <div className="text-6xl">{reminder.emoji}</div>
           <div>
-            <h2 className="text-lg font-bold">{r.title}</h2>
-            <div className="text-[11px] text-muted mono">
-              Hinweis {step + 1} von {reminders.length}
-            </div>
+            <h2
+              className="text-2xl font-bold"
+              style={{ color: reminder.accent }}
+            >
+              {reminder.title}
+            </h2>
           </div>
         </div>
 
-        <div className="text-base leading-relaxed">{r.body}</div>
+        <div className="text-text">{reminder.body}</div>
 
-        {showNoDetail && r.yesNo?.noBody && (
-          <div className="bg-surface-2 border border-border-soft rounded p-3">
-            {r.yesNo.noBody}
+        {showNoDetail && reminder.yesNo?.noBody && (
+          <div
+            className="rounded-lg border-2 p-4"
+            style={{
+              borderColor: reminder.accent,
+              background: `${reminder.accent}1a`,
+            }}
+          >
+            {reminder.yesNo.noBody}
           </div>
         )}
 
         <div className="flex gap-2 pt-1">
-          {r.yesNo && !showNoDetail ? (
+          {reminder.yesNo && !showNoDetail ? (
             <>
               <button
                 type="button"
-                onClick={() => setShowNoDetail(true)}
-                className="btn-ghost flex-1"
+                onClick={onShowNoDetail}
+                className="btn-ghost flex-1 py-3 text-base"
               >
-                {r.yesNo.noLabel}
+                {reminder.yesNo.noLabel}
               </button>
-              <button type="button" onClick={next} className="btn-primary flex-1">
-                {r.yesNo.yesLabel}
+              <button
+                type="button"
+                onClick={onClose}
+                className="flex-1 py-3 rounded-lg font-bold text-base text-bg"
+                style={{ background: reminder.accent }}
+              >
+                {reminder.yesNo.yesLabel}
               </button>
             </>
           ) : (
-            <button type="button" onClick={next} className="btn-primary w-full">
-              {isLast ? 'Verstanden — Schicht starten' : 'Weiter'}
+            <button
+              type="button"
+              onClick={onClose}
+              className="w-full py-3 rounded-lg font-bold text-base text-bg"
+              style={{ background: reminder.accent }}
+            >
+              Verstanden ✓
             </button>
           )}
         </div>
