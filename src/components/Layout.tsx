@@ -14,6 +14,7 @@ export function Layout({ children, rightSlot }: LayoutProps) {
   const signOut = useAuth((s) => s.signOut);
   const navigate = useNavigate();
   const [showReminder, setShowReminder] = useState(false);
+  const [showDoku, setShowDoku] = useState(false);
 
   function startSignOut() {
     if (!session) return;
@@ -73,6 +74,14 @@ export function Layout({ children, rightSlot }: LayoutProps) {
           )}
           {session && (
             <>
+              <button
+                type="button"
+                onClick={() => setShowDoku(true)}
+                className="btn-ghost text-xs px-3 py-1.5"
+                title="Vorfall dokumentieren"
+              >
+                📋 + Doku
+              </button>
               <div className="text-right text-xs leading-tight ml-2">
                 <div className="text-text">{session.profile.name}</div>
                 <div className="text-muted uppercase tracking-wider">
@@ -99,8 +108,16 @@ export function Layout({ children, rightSlot }: LayoutProps) {
 
       {showReminder && (
         <DokuReminderModal
+          logoutMode
           onCancel={() => setShowReminder(false)}
           onDone={doSignOut}
+        />
+      )}
+
+      {showDoku && (
+        <DokuReminderModal
+          onCancel={() => setShowDoku(false)}
+          onDone={() => setShowDoku(false)}
         />
       )}
     </div>

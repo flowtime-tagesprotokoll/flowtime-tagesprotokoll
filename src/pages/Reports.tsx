@@ -354,16 +354,18 @@ export function ReportsPage() {
           ) : (
             <div className="space-y-2">
               {vorfaelle.map((v) => {
-                const text =
-                  v.new_val && typeof v.new_val === 'object' && 'text' in v.new_val
-                    ? String((v.new_val as { text: string }).text)
-                    : '';
+                const data = (v.new_val ?? {}) as {
+                  text?: string | null;
+                  labels?: string[];
+                };
+                const labels = Array.isArray(data.labels) ? data.labels : [];
+                const text = typeof data.text === 'string' ? data.text : '';
                 return (
                   <div
                     key={v.id}
-                    className="bg-warn/10 border border-warn/30 rounded p-3 text-sm"
+                    className="bg-warn/10 border border-warn/30 rounded p-3 text-sm space-y-2"
                   >
-                    <div className="text-xs text-muted mono mb-1">
+                    <div className="text-xs text-muted mono">
                       {new Date(v.ts).toLocaleString('de-DE', {
                         day: '2-digit',
                         month: '2-digit',
@@ -374,7 +376,26 @@ export function ReportsPage() {
                       {' · '}
                       <span className="text-text">{v.user_name ?? '?'}</span>
                     </div>
-                    <div className="whitespace-pre-wrap">{text}</div>
+                    {labels.length > 0 && (
+                      <div className="flex flex-wrap gap-1.5">
+                        {labels.map((l, i) => (
+                          <span
+                            key={i}
+                            className="bg-warn/20 border border-warn/40 text-warn rounded px-2 py-0.5 text-xs"
+                          >
+                            {l}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                    {text && (
+                      <div className="whitespace-pre-wrap text-text">{text}</div>
+                    )}
+                    {labels.length === 0 && !text && (
+                      <div className="text-muted italic">
+                        Kein Detail eingetragen
+                      </div>
+                    )}
                   </div>
                 );
               })}
