@@ -1,0 +1,58 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Flowtime Tagesprotokoll",
+  "version": "0.1.0",
+  "identifier": "com.flowtime.tagesprotokoll",
+  "build": {
+    "beforeDevCommand": "npm run dev",
+    "beforeBuildCommand": "npm run build",
+    "devUrl": "http://localhost:5173",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "Flowtime Tagesprotokoll",
+        "width": 1280,
+        "height": 800,
+        "minWidth": 1024,
+        "minHeight": 700,
+        "resizable": true,
+        "fullscreen": false,
+        "center": true
+      }
+    ],
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": ["msi", "nsis"],
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "category": "Business",
+    "shortDescription": "Tagesprotokoll für Kassenabrechnung",
+    "longDescription": "Flowtime Tagesprotokoll — tägliche Kassenabrechnung mit Soll/Ist-Vergleich, Schichten und Cloud-Sync.",
+    "windows": {
+      "wix": {
+        "language": "de-DE"
+      }
+    }
+  },
+  "plugins": {
+    "updater": {
+      "active": true,
+      "dialog": true,
+      "endpoints": [
+        "https://github.com/flowtime-tagesprotokoll/flowtime-tagesprotokoll/releases/latest/download/latest.json"
+      ],
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDZENzVERURBNDhCMDIxRUUKUldUdUliQkkydDUxYldFWTk5cDd6STlOdlRsL2NEaEZrUklra21kTUZSeWRtdmI3RjdhZDhmOXYK"
+    }
+  }
+}

@@ -1,0 +1,230 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html, body, #root {
+    height: 100%;
+  }
+  body {
+    @apply bg-bg text-text font-sans antialiased;
+    background-image:
+      radial-gradient(circle at 20% 0%, rgba(212, 255, 0, 0.04) 0%, transparent 50%),
+      radial-gradient(circle at 80% 100%, rgba(212, 255, 0, 0.03) 0%, transparent 50%);
+  }
+  input[type='text'],
+  input[type='number'],
+  input[type='date'],
+  input[type='time'],
+  input[type='password'],
+  input[type='email'],
+  select,
+  textarea {
+    @apply bg-surface-2 border border-border text-text rounded;
+    transition: all 0.15s ease;
+  }
+  input:focus,
+  select:focus,
+  textarea:focus {
+    @apply outline-none border-accent;
+    box-shadow: 0 0 0 3px rgba(212, 255, 0, 0.1);
+  }
+  input[readonly],
+  input:disabled {
+    @apply text-muted cursor-not-allowed;
+    background: #0f0f0f;
+  }
+  input[type='number']::-webkit-outer-spin-button,
+  input[type='number']::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+  input[type='number'] {
+    -moz-appearance: textfield;
+    appearance: textfield;
+  }
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  ::-webkit-scrollbar-track {
+    @apply bg-bg;
+  }
+  ::-webkit-scrollbar-thumb {
+    @apply bg-border rounded;
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply bg-accent text-bg font-semibold rounded px-4 py-2 transition-colors;
+  }
+  .btn-primary:hover {
+    @apply bg-accent-dim;
+  }
+  .btn-ghost {
+    @apply bg-surface-2 border border-border text-text rounded px-4 py-2 transition-colors;
+  }
+  .btn-ghost:hover {
+    @apply border-accent text-accent;
+  }
+  .field-input {
+    @apply w-full px-3 py-2.5 rounded text-[15px];
+  }
+  .field-input.mono {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 16px;
+    font-weight: 500;
+    letter-spacing: 0.02em;
+  }
+  .number-tnum {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: 'tnum';
+  }
+
+  /* Protokoll-Tabelle (3-Spalten-Grid wie in der alten App) */
+  .protokoll-table {
+    border: 1px solid #2a2a2a;
+    border-radius: 8px;
+    overflow: hidden;
+    background: #141414;
+  }
+  .protokoll-table > .row {
+    display: grid;
+    grid-template-columns: 220px 1fr 1fr;
+    align-items: stretch;
+  }
+  .protokoll-table > .row + .row {
+    border-top: 1px solid #1f1f1f;
+  }
+  .protokoll-table .label-cell {
+    background: #1c1c1c;
+    padding: 14px;
+    font-size: 13px;
+    font-weight: 600;
+    color: #888;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 4px;
+    border-right: 1px solid #1f1f1f;
+  }
+  .protokoll-table .label-cell .sub {
+    text-transform: none;
+    letter-spacing: 0;
+    font-size: 10px;
+    font-weight: 400;
+    color: #555;
+  }
+  .protokoll-table .data-cell {
+    padding: 10px;
+    border-right: 1px solid #1f1f1f;
+  }
+  .protokoll-table .data-cell:last-child {
+    border-right: none;
+  }
+  .protokoll-table .section-row {
+    grid-template-columns: 1fr;
+    background: linear-gradient(to right, #232323, #1c1c1c);
+  }
+  .protokoll-table .section-row .section-title {
+    padding: 12px 16px;
+    font-size: 12px;
+    font-weight: 700;
+    color: #d4ff00;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+  }
+  .protokoll-table .head-cell {
+    background: #232323;
+    padding: 14px;
+    text-align: center;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    color: #d4ff00;
+    font-size: 14px;
+    border-right: 1px solid #1f1f1f;
+  }
+  .protokoll-table .head-cell:last-child {
+    border-right: none;
+  }
+
+  .big-cell {
+    text-align: right;
+    padding: 18px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 24px;
+    font-weight: 700;
+    letter-spacing: 0.01em;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    border-right: 1px solid #1f1f1f;
+  }
+  .big-cell:last-child {
+    border-right: none;
+  }
+  .big-cell.soll {
+    background: rgba(96, 165, 250, 0.06);
+    color: #60a5fa;
+  }
+  .big-cell.ist {
+    background: rgba(212, 255, 0, 0.06);
+    color: #d4ff00;
+  }
+  .big-input {
+    width: 100%;
+    padding: 14px 16px;
+    border-radius: 6px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 24px;
+    font-weight: 700;
+    text-align: right;
+    letter-spacing: 0.01em;
+    background: rgba(212, 255, 0, 0.05);
+    border: 1px solid rgba(212, 255, 0, 0.2);
+    color: #d4ff00;
+  }
+  .big-input:focus {
+    background: rgba(212, 255, 0, 0.08);
+    border-color: #d4ff00;
+  }
+
+  .line-grid {
+    display: grid;
+    grid-template-columns: 1fr 130px 28px;
+    gap: 5px;
+    margin-bottom: 4px;
+  }
+  .sum-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 12px;
+    border-radius: 5px;
+    font-size: 13px;
+    font-weight: 700;
+    background: #232323;
+    color: #f5f5f5;
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  @media (max-width: 900px) {
+    .protokoll-table > .row {
+      grid-template-columns: 1fr;
+    }
+    .protokoll-table .label-cell {
+      border-right: none;
+      border-bottom: 1px solid #1f1f1f;
+    }
+    .protokoll-table .data-cell,
+    .protokoll-table .big-cell {
+      border-right: none;
+      border-bottom: 1px solid #1f1f1f;
+    }
+  }
+}
