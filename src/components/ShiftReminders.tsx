@@ -1,6 +1,22 @@
 import { useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
 import { useAuth } from '../lib/authStore';
+import { isTauri } from '../lib/updater';
+
+/** Holt das Fenster nach vorne, falls minimiert oder im Hintergrund. */
+async function bringToFront() {
+  if (!isTauri()) return;
+  try {
+    const { getCurrentWindow } = await import('@tauri-apps/api/window');
+    const w = getCurrentWindow();
+    await w.show();
+    await w.unminimize();
+    await w.setFocus();
+    await w.requestUserAttention(1); // Critical → Taskbar blinkt
+  } catch (e) {
+    console.warn('[reminder] bringToFront fehlgeschlagen:', e);
+  }
+}
 
 interface Reminder {
   emoji: string;
@@ -45,11 +61,39 @@ function buildReminders(name: string): Reminder[] {
       ),
     },
     {
+      emoji: '🪪',
+      title: 'Ausweiskontrolle',
+      body: (
+        <p>
+          <strong>{name}</strong> — bei jedem Ausweis bitte <strong>auf das Foto</strong>{' '}
+          schauen (passt es zur Person?) und auf die <strong>Gültigkeit</strong>{' '}
+          (abgelaufen = nicht gültig). Im Zweifel lieber einmal mehr prüfen als zu
+          wenig.
+        </p>
+      ),
+    },
+    {
+      emoji: '🕴️',
+      title: 'PEP — Politisch Exponierte Person',
+      body: (
+        <p>
+          Weißt du noch, was ein <strong>PEP</strong> ist?{' '}
+          <span className="text-muted">
+            (Politiker, Behördenleiter, Richter, Familie/enge Vertraute solcher
+            Personen.)
+          </span>
+          <br />
+          Wenn du den Verdacht hast, einen PEP vor dir zu haben:{' '}
+          <strong>sofort dem Chef melden</strong>.
+        </p>
+      ),
+    },
+    {
       emoji: '💰',
       title: 'Geldwäsche-Verdachtsmeldung',
       body: (
         <p>
-          Hallo <strong>{name}</strong>! Bei Behördenkontrollen wirst du gefragt,
+          <strong>{name}</strong> — bei Behördenkontrollen wirst du gefragt,
           wie man eine <strong>Geldwäsche-Verdachtsmeldung</strong> abgibt. Du musst
           das wissen.
           <br />
@@ -92,6 +136,17 @@ function buildReminders(name: string): Reminder[] {
         ),
       },
     },
+    {
+      emoji: '☀️',
+      title: 'Du schaffst das!',
+      body: (
+        <p>
+          Bleib immer <strong>aufmerksam</strong>, <strong>freundlich</strong> und{' '}
+          <strong>sachlich</strong>. Auch wenn's mal stressig wird — ruhig bleiben,
+          Probleme höflich lösen. <strong>Du schaffst das!</strong> 💪
+        </p>
+      ),
+    },
   ];
 }
 
@@ -110,6 +165,11 @@ export function ShiftReminders() {
     if (flag === session.profile.id) return;
     setStep(0);
   }, [session]);
+
+  // Bei jedem Step-Wechsel das Fenster nach vorne holen (auch wenn minimiert)
+  useEffect(() => {
+    if (step >= 0) bringToFront();
+  }, [step]);
 
   if (!session || session.kind !== 'mitarbeiter' || step < 0) return null;
 
