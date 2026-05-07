@@ -32,8 +32,11 @@ export function LoginPage() {
         {isLoading && <div className="text-center text-muted">Lade …</div>}
 
         {error && (
-          <div className="bg-minus/10 border border-minus/30 text-minus rounded p-4 text-sm">
-            Fehler beim Laden: {String(error)}
+          <div className="bg-minus/10 border border-minus/30 text-minus rounded p-4 text-sm space-y-1">
+            <div className="font-semibold">Fehler beim Laden:</div>
+            <div className="font-mono text-xs whitespace-pre-wrap break-all">
+              {error instanceof Error ? error.message : JSON.stringify(error, null, 2)}
+            </div>
           </div>
         )}
 
