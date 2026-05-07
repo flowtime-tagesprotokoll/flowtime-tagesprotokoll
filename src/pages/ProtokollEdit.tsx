@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Layout } from '../components/Layout';
+import { BelegUpload } from '../components/BelegUpload';
 import { useAuth } from '../lib/authStore';
 import { useProfiles, useShops } from '../lib/queries';
 import {
@@ -543,6 +544,22 @@ export function ProtokollEditPage() {
                 value={s1Form.kassenabrechnung}
                 onChange={(v) => patchS1('kassenabrechnung', v)}
               />
+              <div className="mt-2">
+                <BelegUpload
+                  shopId={shopId}
+                  datum={datum}
+                  schichtNr={1}
+                  belegPath={schicht1.beleg_storage_path}
+                  onChange={(path) =>
+                    updateSchicht.mutate({
+                      shopId,
+                      datum,
+                      schichtId: schicht1.id,
+                      patch: { beleg_storage_path: path },
+                    })
+                  }
+                />
+              </div>
             </div>
             <div
               className="data-cell"
@@ -555,6 +572,22 @@ export function ProtokollEditPage() {
                 value={s2Form.kassenabrechnung}
                 onChange={(v) => patchS2('kassenabrechnung', v)}
               />
+              <div className="mt-2">
+                <BelegUpload
+                  shopId={shopId}
+                  datum={datum}
+                  schichtNr={2}
+                  belegPath={schicht2.beleg_storage_path}
+                  onChange={(path) =>
+                    updateSchicht.mutate({
+                      shopId,
+                      datum,
+                      schichtId: schicht2.id,
+                      patch: { beleg_storage_path: path },
+                    })
+                  }
+                />
+              </div>
             </div>
           </div>
 
