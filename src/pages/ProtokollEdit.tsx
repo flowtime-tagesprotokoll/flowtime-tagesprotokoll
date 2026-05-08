@@ -515,10 +515,12 @@ export function ProtokollEditPage() {
           </div>
 
           {/* Einlagen */}
-          <div className="row section-row">
+          <div className="row section-row with-cols">
             <div className="section-title" style={{ color: '#4ade80' }}>
               ＋ Einlagen
             </div>
+            <div className="schicht-tag">Schicht 1 (Früh)</div>
+            <div className="schicht-tag">Schicht 2 (Spät)</div>
           </div>
           <div className="row">
             <div className="label-cell">
@@ -530,6 +532,7 @@ export function ProtokollEditPage() {
                 zeilen={s1Form.einlagen}
                 onChange={(z) => patchS1('einlagen', z)}
                 summe={sums1.einlagenSumme}
+                totalLabel="Einlagen gesamt"
               />
             </div>
             <div className="data-cell">
@@ -537,15 +540,18 @@ export function ProtokollEditPage() {
                 zeilen={s2Form.einlagen}
                 onChange={(z) => patchS2('einlagen', z)}
                 summe={sums2.einlagenSumme}
+                totalLabel="Einlagen gesamt"
               />
             </div>
           </div>
 
           {/* Entnahmen */}
-          <div className="row section-row">
+          <div className="row section-row with-cols">
             <div className="section-title" style={{ color: '#f87171' }}>
               − Entnahmen
             </div>
+            <div className="schicht-tag">Schicht 1 (Früh)</div>
+            <div className="schicht-tag">Schicht 2 (Spät)</div>
           </div>
           <div className="row">
             <div className="label-cell">
@@ -557,6 +563,7 @@ export function ProtokollEditPage() {
                 zeilen={s1Form.entnahmen}
                 onChange={(z) => patchS1('entnahmen', z)}
                 summe={sums1.entnahmenSumme}
+                totalLabel="Entnahmen gesamt"
               />
             </div>
             <div className="data-cell">
@@ -564,13 +571,14 @@ export function ProtokollEditPage() {
                 zeilen={s2Form.entnahmen}
                 onChange={(z) => patchS2('entnahmen', z)}
                 summe={sums2.entnahmenSumme}
+                totalLabel="Entnahmen gesamt"
               />
             </div>
           </div>
 
           {/* Kassenabrechnung Z-Bon */}
           <div
-            className="row section-row"
+            className="row section-row with-cols"
             style={{
               background:
                 'linear-gradient(to right, rgba(251,191,36,0.18), rgba(251,191,36,0.08))',
@@ -579,8 +587,10 @@ export function ProtokollEditPage() {
             }}
           >
             <div className="section-title" style={{ color: '#fbbf24', fontSize: 13 }}>
-              🧾 Letzter Schritt — Kassenabrechnung (Z-Bon)
+              🧾 Kassenabrechnung (Z-Bon)
             </div>
+            <div className="schicht-tag" style={{ color: '#fbbf24' }}>Schicht 1 (Früh)</div>
+            <div className="schicht-tag" style={{ color: '#fbbf24' }}>Schicht 2 (Spät)</div>
           </div>
           <div className="row">
             <div
@@ -796,10 +806,12 @@ export function ProtokollEditPage() {
           </div>
 
           {/* Übergabe-Notiz */}
-          <div className="row section-row" style={{ background: 'linear-gradient(to right, rgba(96,165,250,0.18), rgba(96,165,250,0.08))', borderTop: '2px solid #60a5fa', borderBottom: '2px solid #60a5fa' }}>
+          <div className="row section-row with-cols" style={{ background: 'linear-gradient(to right, rgba(96,165,250,0.18), rgba(96,165,250,0.08))', borderTop: '2px solid #60a5fa', borderBottom: '2px solid #60a5fa' }}>
             <div className="section-title" style={{ color: '#60a5fa', fontSize: 13 }}>
               📨 Übergabe — Notiz an die andere Schicht
             </div>
+            <div className="schicht-tag" style={{ color: '#60a5fa' }}>Schicht 1 (Früh)</div>
+            <div className="schicht-tag" style={{ color: '#60a5fa' }}>Schicht 2 (Spät)</div>
           </div>
           <div className="row">
             <div className="label-cell" style={{ color: '#60a5fa' }}>
@@ -1023,16 +1035,16 @@ function ZBonInput({
   const filled = !!value.trim();
   return (
     <>
-      <div className="relative">
+      <div className={`relative ${!filled ? 'beleg-empty-glow' : ''}`}>
         <input
           type="text"
           inputMode="decimal"
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          placeholder="Endbetrag €"
+          placeholder="Kassenergebnis €"
           style={{
             width: '100%',
-            padding: '14px 16px',
+            padding: '14px 40px',
             borderRadius: 6,
             fontFamily: '"JetBrains Mono", monospace',
             fontSize: 24,
@@ -1049,8 +1061,10 @@ function ZBonInput({
         <span
           className="field-status-badge"
           style={{
-            top: 8,
-            right: 8,
+            left: 12,
+            width: 22,
+            height: 22,
+            fontSize: 13,
             background: filled ? '#4ade80' : 'rgba(251,191,36,0.18)',
             border: filled ? 'none' : '1px solid rgba(251,191,36,0.7)',
             color: filled ? '#0a0a0a' : '#fbbf24',
@@ -1064,7 +1078,7 @@ function ZBonInput({
         className="text-[11px] mono mt-1.5 mb-1"
         style={{ color: filled ? '#4ade80' : '#fbbf24', opacity: 0.85 }}
       >
-        ↑ Endbetrag aus Kassenausdruck eintragen
+        ↑ Kassenergebnis aus Kassenausdruck eintragen
       </div>
     </>
   );
@@ -1074,13 +1088,21 @@ function Lines({
   zeilen,
   onChange,
   summe,
+  totalLabel,
 }: {
   zeilen: BewegungZeile[];
   onChange: (z: BewegungZeile[]) => void;
   summe: number;
+  totalLabel: string;
 }) {
-  function update(i: number, patch: Partial<BewegungZeile>) {
-    onChange(zeilen.map((z, idx) => (idx === i ? { ...z, ...patch } : z)));
+  const MIN_ROWS = 3;
+  const totalDisplay = Math.max(zeilen.length, MIN_ROWS);
+
+  function setAt(i: number, patch: Partial<BewegungZeile>) {
+    const next = [...zeilen];
+    while (next.length <= i) next.push({ beschreibung: '', betrag: '' });
+    next[i] = { ...next[i], ...patch };
+    onChange(next);
   }
   function add() {
     onChange([...zeilen, { beschreibung: '', betrag: '' }]);
@@ -1088,35 +1110,44 @@ function Lines({
   function remove(i: number) {
     onChange(zeilen.filter((_, idx) => idx !== i));
   }
+
   return (
     <div>
-      {zeilen.map((z, i) => (
-        <div key={i} className="line-grid">
-          <input
-            type="text"
-            value={z.beschreibung}
-            onChange={(e) => update(i, { beschreibung: e.target.value })}
-            placeholder="Beschreibung"
-            className="field-input"
-          />
-          <input
-            type="text"
-            inputMode="decimal"
-            value={z.betrag}
-            onChange={(e) => update(i, { betrag: e.target.value })}
-            placeholder="0,00"
-            className="field-input mono text-right"
-          />
-          <button
-            type="button"
-            onClick={() => remove(i)}
-            aria-label="Zeile entfernen"
-            className="text-muted-2 hover:text-minus text-lg leading-none"
-          >
-            ×
-          </button>
-        </div>
-      ))}
+      {Array.from({ length: totalDisplay }).map((_, i) => {
+        const z = zeilen[i] ?? { beschreibung: '', betrag: '' };
+        const isExtra = i >= MIN_ROWS;
+        return (
+          <div key={i} className="line-grid">
+            <input
+              type="text"
+              value={z.beschreibung}
+              onChange={(e) => setAt(i, { beschreibung: e.target.value })}
+              placeholder={`Beschreibung ${i + 1}`}
+              className="field-input"
+            />
+            <input
+              type="text"
+              inputMode="decimal"
+              value={z.betrag}
+              onChange={(e) => setAt(i, { betrag: e.target.value })}
+              placeholder="0,00"
+              className="field-input mono text-right"
+            />
+            {isExtra ? (
+              <button
+                type="button"
+                onClick={() => remove(i)}
+                aria-label="Zeile entfernen"
+                className="text-muted-2 hover:text-minus text-lg leading-none"
+              >
+                ×
+              </button>
+            ) : (
+              <span aria-hidden />
+            )}
+          </div>
+        );
+      })}
       <div className="flex justify-between items-center mt-2">
         <button
           type="button"
@@ -1125,7 +1156,7 @@ function Lines({
         >
           + Zeile
         </button>
-        <span className="sum-pill">Σ {formatEur(summe)}</span>
+        <span className="sum-pill">{totalLabel}: {formatEur(summe)}</span>
       </div>
     </div>
   );
@@ -1143,7 +1174,7 @@ function DiffCell({ diff }: { diff: number | null }) {
           : '#f5f5f5';
   return (
     <div
-      className="big-cell"
+      className="medium-cell"
       style={{
         color,
         background: warn ? 'rgba(248,113,113,0.08)' : 'transparent',
@@ -1153,7 +1184,7 @@ function DiffCell({ diff }: { diff: number | null }) {
         {formatEur(diff)}
         {warn && (
           <div
-            className="text-[11px] mt-1"
+            className="text-[10px] mt-0.5"
             style={{ color: '#f87171', fontWeight: 500 }}
           >
             ⚠ über {formatEur(DIFF_WARN_THRESHOLD)}

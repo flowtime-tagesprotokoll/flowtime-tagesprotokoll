@@ -87,19 +87,33 @@
   .field-wrap {
     position: relative;
   }
+  /* Platz fuers Status-Badge auf der LINKEN Seite, damit es rechtsbuendige
+     Eintraege (zb Geldbetraege) niemals beruehrt. */
+  .field-wrap.is-empty .field-input,
+  .field-wrap.is-filled .field-input,
+  .field-wrap.is-empty input,
+  .field-wrap.is-filled input,
+  .field-wrap.is-empty select,
+  .field-wrap.is-filled select,
+  .field-wrap.is-empty textarea,
+  .field-wrap.is-filled textarea {
+    padding-left: 30px;
+  }
   .field-wrap.is-empty .field-input,
   .field-wrap.is-empty input,
   .field-wrap.is-empty select,
   .field-wrap.is-empty textarea {
     border-color: rgba(251, 191, 36, 0.55);
-    background: rgba(251, 191, 36, 0.04);
+    background: rgba(251, 191, 36, 0.05);
+    animation: empty-pulse 2.4s ease-in-out infinite;
   }
   .field-wrap.is-empty .field-input:focus,
   .field-wrap.is-empty input:focus,
   .field-wrap.is-empty select:focus,
   .field-wrap.is-empty textarea:focus {
     border-color: #fbbf24;
-    background: rgba(251, 191, 36, 0.07);
+    background: rgba(251, 191, 36, 0.08);
+    animation: none;
   }
   .field-wrap.is-filled .field-input,
   .field-wrap.is-filled input,
@@ -117,15 +131,16 @@
   }
   .field-status-badge {
     position: absolute;
-    top: 6px;
-    right: 6px;
-    width: 16px;
-    height: 16px;
+    top: 50%;
+    left: 6px;
+    transform: translateY(-50%);
+    width: 18px;
+    height: 18px;
     border-radius: 9999px;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    font-size: 10px;
+    font-size: 11px;
     font-weight: 800;
     font-family: 'JetBrains Mono', monospace;
     pointer-events: none;
@@ -140,6 +155,33 @@
     background: rgba(251, 191, 36, 0.18);
     border: 1px solid rgba(251, 191, 36, 0.7);
     color: #fbbf24;
+  }
+  @keyframes empty-pulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(251, 191, 36, 0); }
+    50%      { box-shadow: 0 0 0 4px rgba(251, 191, 36, 0.18); }
+  }
+
+  /* Mittelgrosse Ergebniszelle (zwischen big-cell 24px und field-input 15px) */
+  .medium-cell {
+    padding: 10px 14px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 16px;
+    font-weight: 700;
+    text-align: right;
+    border-right: 1px solid #1f1f1f;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    letter-spacing: 0.01em;
+  }
+  .medium-cell:last-child {
+    border-right: none;
+  }
+
+  /* Beleg-Dropzone Pulse, wenn noch kein Foto da ist */
+  .beleg-empty-glow {
+    animation: empty-pulse 2.4s ease-in-out infinite;
+    border-radius: 5px;
   }
   .field-input.mono {
     font-family: 'JetBrains Mono', monospace;
@@ -199,6 +241,9 @@
     grid-template-columns: 1fr;
     background: linear-gradient(to right, #232323, #1c1c1c);
   }
+  .protokoll-table .section-row.with-cols {
+    grid-template-columns: 220px 1fr 1fr;
+  }
   .protokoll-table .section-row .section-title {
     padding: 12px 16px;
     font-size: 12px;
@@ -206,6 +251,17 @@
     color: #d4ff00;
     text-transform: uppercase;
     letter-spacing: 0.1em;
+  }
+  .protokoll-table .schicht-tag {
+    padding: 12px 16px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: #888;
+    border-left: 1px solid rgba(255, 255, 255, 0.04);
+    display: flex;
+    align-items: center;
   }
   .protokoll-table .head-cell {
     background: #232323;

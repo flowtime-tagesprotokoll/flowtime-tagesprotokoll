@@ -140,6 +140,7 @@ export function BelegUpload({
         <div
           ref={dropRef}
           tabIndex={0}
+          className={dragOver || isFocused ? '' : 'beleg-empty-glow'}
           onClick={() => !disabled && dropRef.current?.focus()}
           onFocus={() => setIsFocused(true)}
           onBlur={() => setIsFocused(false)}
@@ -168,7 +169,10 @@ export function BelegUpload({
           }}
         >
           <div className="text-xl mb-0.5">{busy ? '⏳' : '📷'}</div>
-          <div className="text-[11px] mono">
+          <div className="text-[12px] mono font-bold" style={{ letterSpacing: '0.05em' }}>
+            ⚠ BELEGFOTO FEHLT
+          </div>
+          <div className="text-[11px] mono mt-0.5" style={{ opacity: 0.85 }}>
             {busy
               ? 'lädt hoch …'
               : isFocused
