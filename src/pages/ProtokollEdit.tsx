@@ -359,6 +359,13 @@ export function ProtokollEditPage() {
     !!vortag &&
     String(vortag.ist) === s1Form.kassenstart.replace(',', '.');
 
+  // Diskrepanz-Erkennung: heutiger S1-Kassenstart weicht von Vortags-IST ab.
+  const startNum = strToNum(s1Form.kassenstart);
+  const vortagDiskrepanz =
+    vortag && startNum !== null && Math.abs(vortag.ist - startNum) > 0.01
+      ? { vortagIst: vortag.ist, heutigerStart: startNum, datum: vortag.datum }
+      : null;
+
   return (
     <Layout>
       <div className="max-w-5xl mx-auto px-3 sm:px-6 py-5 space-y-4">
@@ -394,6 +401,36 @@ export function ProtokollEditPage() {
         {isAdmin && datum !== new Date().toISOString().slice(0, 10) && (
           <div className="bg-warn/10 border border-warn/30 text-warn rounded p-2 text-xs mono">
             ⚠ Admin-Bearbeitung — dies ist nicht das heutige Datum.
+          </div>
+        )}
+
+        {vortagDiskrepanz && (
+          <div
+            className="rounded-lg p-3 text-sm space-y-1"
+            style={{
+              background: 'rgba(248,113,113,0.10)',
+              border: '2px solid #f87171',
+              color: '#f87171',
+            }}
+          >
+            <div className="font-bold flex items-center gap-2">
+              <span className="text-base">⚠</span>
+              <span>Vortags-Differenz erkannt</span>
+            </div>
+            <div className="text-[13px]" style={{ color: '#fca5a5' }}>
+              Am Vortag ({vortagDiskrepanz.datum}) endete die Kasse mit{' '}
+              <strong className="mono">{formatEur(vortagDiskrepanz.vortagIst)}</strong>,
+              heute startet sie mit{' '}
+              <strong className="mono">{formatEur(vortagDiskrepanz.heutigerStart)}</strong>{' '}
+              — Differenz{' '}
+              <strong className="mono">
+                {formatEur(vortagDiskrepanz.heutigerStart - vortagDiskrepanz.vortagIst)}
+              </strong>
+              .
+            </div>
+            <div className="text-[12px]" style={{ color: '#fca5a5', opacity: 0.85 }}>
+              Bitte prüfen: manuelle Eingabe, Rechenfehler, oder über Nacht aus der Kasse genommen?
+            </div>
           </div>
         )}
 

@@ -47,6 +47,57 @@ export function DashboardPage() {
     return rows;
   }, [protokolle, filterShop, filterMonth]);
 
+  /**
+   * Vortagsabgleich: vergleicht die End-IST des Vortages (gleicher Shop) mit
+   * dem Kassenstart der Frühschicht des aktuellen Tages. Ist eine Differenz
+   * grösser 1 Cent vorhanden -> als Diskrepanz markiert.
+   */
+  const diskrepanzMap = useMemo(() => {
+    const all = [...(protokolle ?? [])].sort((a, b) =>
+      a.datum < b.datum ? -1 : a.datum > b.datum ? 1 : 0,
+    );
+    const lastIstByShop = new Map<string, { datum: string; ist: number }>();
+    const map = new Map<string, { vortag: string; vortagIst: number; heutigerStart: number; diff: number }>();
+    for (const p of all) {
+      const s1 = p.schichten.find((s) => s.schicht_nr === 1);
+      const s2 = p.schichten.find((s) => s.schicht_nr === 2);
+      const startHeute = s1?.kassenstart;
+      const vortag = lastIstByShop.get(p.shop_id);
+      if (vortag && startHeute !== null && startHeute !== undefined) {
+        const delta = Math.abs(vortag.ist - startHeute);
+        if (delta > 0.01) {
+          map.set(p.id, {
+            vortag: vortag.datum,
+            vortagIst: vortag.ist,
+            heutigerStart: startHeute,
+            diff: startHeute - vortag.ist,
+          });
+        }
+      }
+      // End-IST = S2-IST falls vorhanden, sonst S1-IST
+      const endIst =
+        s2?.kassenist !== null && s2?.kassenist !== undefined
+          ? s2.kassenist
+          : s1?.kassenist;
+      if (endIst !== null && endIst !== undefined) {
+        lastIstByShop.set(p.shop_id, { datum: p.datum, ist: endIst });
+      }
+    }
+    return map;
+  }, [protokolle]);
+
+  const filteredZBonSumme = useMemo(() => {
+    return filtered.reduce((acc, p) => {
+      const s1 = p.schichten.find((s) => s.schicht_nr === 1);
+      const s2 = p.schichten.find((s) => s.schicht_nr === 2);
+      return acc + (s1?.kassenabrechnung ?? 0) + (s2?.kassenabrechnung ?? 0);
+    }, 0);
+  }, [filtered]);
+  const filteredDiskrepanzen = useMemo(
+    () => filtered.filter((p) => diskrepanzMap.has(p.id)).length,
+    [filtered, diskrepanzMap],
+  );
+
   const heuteCount = (protokolle ?? []).filter((p) => p.datum === heute).length;
 
   return (
@@ -136,9 +187,31 @@ export function DashboardPage() {
 
         <div className="bg-surface border border-border rounded-lg overflow-hidden">
           <div className="px-4 py-3 border-b border-border-soft flex items-center justify-between flex-wrap gap-2">
-            <h3 className="font-semibold text-sm">
-              {isAdmin ? 'Alle Protokolle' : 'Heutige Protokolle'}
-            </h3>
+            <div className="flex items-center gap-3 flex-wrap">
+              <h3 className="font-semibold text-sm">
+                {isAdmin ? 'Alle Protokolle' : 'Heutige Protokolle'}
+              </h3>
+              {isAdmin && filtered.length > 0 && (
+                <>
+                  <span
+                    className="text-[11px] mono px-2 py-0.5 rounded"
+                    style={{ background: 'rgba(251,191,36,0.12)', color: '#fbbf24' }}
+                    title="Summe aller Z-Bons in der aktuellen Auswahl"
+                  >
+                    Z-Bon Σ {formatEur(filteredZBonSumme)}
+                  </span>
+                  {filteredDiskrepanzen > 0 && (
+                    <span
+                      className="text-[11px] mono px-2 py-0.5 rounded font-bold"
+                      style={{ background: 'rgba(248,113,113,0.18)', color: '#f87171' }}
+                      title="Tage mit Differenz zwischen Vortags-IST und heutigem Kassenstart"
+                    >
+                      ⚠ {filteredDiskrepanzen} Diskrepanz{filteredDiskrepanzen === 1 ? '' : 'en'}
+                    </span>
+                  )}
+                </>
+              )}
+            </div>
             {isAdmin && (
               <div className="flex items-center gap-2 flex-wrap">
                 <select
@@ -203,15 +276,38 @@ export function DashboardPage() {
                 const zbonTotal =
                   (s1?.kassenabrechnung ?? 0) + (s2?.kassenabrechnung ?? 0);
                 const isToday = p.datum === heute;
+                const diskrepanz = diskrepanzMap.get(p.id);
                 return (
                   <button
                     key={p.id}
                     type="button"
                     onClick={() => navigate(`/protokoll/${p.shop_id}/${p.datum}`)}
                     className="w-full grid grid-cols-[110px_70px_1fr_1fr_90px] gap-2 px-4 py-2.5 text-sm text-left hover:bg-surface-2 transition-colors items-center"
+                    style={
+                      diskrepanz
+                        ? {
+                            background: 'rgba(248,113,113,0.06)',
+                            borderLeft: '3px solid #f87171',
+                          }
+                        : undefined
+                    }
+                    title={
+                      diskrepanz
+                        ? `⚠ Vortags-IST (${fmtDate(diskrepanz.vortag)}) = ${formatEur(diskrepanz.vortagIst)}, heute Kassenstart = ${formatEur(diskrepanz.heutigerStart)} (Δ ${formatEur(diskrepanz.diff)})`
+                        : undefined
+                    }
                   >
-                    <div className="mono">
-                      {fmtDate(p.datum)}
+                    <div className="mono flex items-center gap-1">
+                      {diskrepanz && (
+                        <span
+                          className="text-[11px] font-bold"
+                          style={{ color: '#f87171' }}
+                          aria-label="Vortagsdifferenz"
+                        >
+                          ⚠
+                        </span>
+                      )}
+                      <span>{fmtDate(p.datum)}</span>
                       {isToday && (
                         <span className="ml-1 text-[10px] text-accent">●</span>
                       )}
