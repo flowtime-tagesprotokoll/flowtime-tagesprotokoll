@@ -5,6 +5,7 @@ import { useProfiles, useShops } from '../lib/queries';
 import { useProtokollListe } from '../lib/protokollQueries';
 import { useAuth } from '../lib/authStore';
 import { formatEur } from '../lib/calc';
+import { firstName } from '../lib/types';
 
 function todayISO(): string {
   return new Date().toISOString().slice(0, 10);
@@ -26,7 +27,7 @@ export function DashboardPage() {
 
   const profileMap = useMemo(() => {
     const m = new Map<string, string>();
-    (profiles ?? []).forEach((p) => m.set(p.id, p.name));
+    (profiles ?? []).forEach((p) => m.set(p.id, firstName(p.name)));
     return m;
   }, [profiles]);
   const shopMap = useMemo(() => {

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import type { ReactNode } from 'react';
 import { useAuth } from '../lib/authStore';
+import { firstName } from '../lib/types';
 import { DokuReminderModal } from './DokuReminder';
 import { ShiftReminders } from './ShiftReminders';
 import { OnlineIndicator } from './OnlineIndicator';
@@ -64,7 +65,7 @@ export function Layout({ children, rightSlot }: LayoutProps) {
                 <span className="sm:hidden">Doku</span>
               </button>
               <div className="text-right text-xs leading-tight ml-2">
-                <div className="text-text">{session.profile.name}</div>
+                <div className="text-text">{firstName(session.profile.name)}</div>
                 <div className="text-muted uppercase tracking-wider">
                   {session.profile.rolle}
                 </div>

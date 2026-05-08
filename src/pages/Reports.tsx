@@ -11,6 +11,7 @@ import {
   formatEur,
   formatStunden,
 } from '../lib/calc';
+import { firstName } from '../lib/types';
 import type { AuditEntry, Kassenbewegung, Schicht } from '../lib/types';
 
 function currentMonth(): string {
@@ -111,7 +112,7 @@ export function ReportsPage() {
 
   const profileMap = useMemo(() => {
     const m = new Map<string, string>();
-    (profiles ?? []).forEach((p) => m.set(p.id, p.name));
+    (profiles ?? []).forEach((p) => m.set(p.id, firstName(p.name)));
     return m;
   }, [profiles]);
   const shopMap = useMemo(() => {

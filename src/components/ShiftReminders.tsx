@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { useAuth } from '../lib/authStore';
 import { showReminderNotification } from '../lib/notify';
+import { firstName } from '../lib/types';
 
 interface Reminder {
   emoji: string;
@@ -173,7 +174,7 @@ export function ShiftReminders() {
     if (!session) return;
     if (session.kind !== 'mitarbeiter') return;
 
-    const reminders = buildReminders(session.profile.name);
+    const reminders = buildReminders(firstName(session.profile.name));
     orderRef.current = shuffle([...reminders.keys()]);
     cursorRef.current = 0;
 
@@ -207,7 +208,7 @@ export function ShiftReminders() {
     return null;
   }
 
-  const reminders = buildReminders(session.profile.name);
+  const reminders = buildReminders(firstName(session.profile.name));
   const r = reminders[activeIndex];
 
   function dismiss() {
@@ -216,7 +217,7 @@ export function ShiftReminders() {
     // nächsten Reminder einplanen
     if (timerRef.current) clearTimeout(timerRef.current);
     timerRef.current = setTimeout(() => {
-      const reminders = buildReminders(session!.profile.name);
+      const reminders = buildReminders(firstName(session!.profile.name));
       const idx = orderRef.current[cursorRef.current % orderRef.current.length];
       cursorRef.current++;
       if (cursorRef.current >= orderRef.current.length) {

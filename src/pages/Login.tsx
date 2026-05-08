@@ -7,6 +7,7 @@ import { useAuth } from '../lib/authStore';
 import { supabase } from '../lib/supabase';
 import { verifyPin } from '../lib/pin';
 import { ensureNotificationPermission } from '../lib/notify';
+import { firstName } from '../lib/types';
 import type { Profile } from '../lib/types';
 
 export function LoginPage() {
@@ -103,7 +104,7 @@ export function LoginPage() {
 
       {pinProfile && (
         <PinKeypad
-          title={pinProfile.name}
+          title={firstName(pinProfile.name)}
           subtitle="PIN eingeben"
           onCancel={() => {
             setPinProfile(null);
@@ -159,7 +160,7 @@ function AdminLoginModal({ profile, onClose, onSuccess }: AdminLoginModalProps) 
       >
         <div>
           <h2 className="text-lg font-bold">Admin-Login</h2>
-          <p className="text-sm text-muted mt-1">{profile.name}</p>
+          <p className="text-sm text-muted mt-1">{firstName(profile.name)}</p>
         </div>
 
         <label className="block space-y-1">

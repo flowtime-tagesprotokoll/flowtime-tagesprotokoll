@@ -76,3 +76,9 @@ export interface AuditEntry {
 export type Session =
   | { kind: 'admin'; profile: Profile; authUserId: string }
   | { kind: 'mitarbeiter'; profile: Profile };
+
+/** Vorname aus 'Vorname Nachname' rausziehen — Anzeige in der App. */
+export function firstName(name: string | null | undefined): string {
+  if (!name) return '';
+  return name.trim().split(/\s+/)[0] ?? '';
+}

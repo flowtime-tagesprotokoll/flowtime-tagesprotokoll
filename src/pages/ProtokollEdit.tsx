@@ -21,6 +21,7 @@ import {
   formatStunden,
   isShiftComplete,
 } from '../lib/calc';
+import { firstName } from '../lib/types';
 import type { Kassenbewegung, Profile, Schicht } from '../lib/types';
 
 interface BewegungZeile {
@@ -908,7 +909,7 @@ function MitarbeiterSelect({
         <option value="">— wählen —</option>
         {options.map((m) => (
           <option key={m.id} value={m.id}>
-            {m.name}
+            {firstName(m.name)}
           </option>
         ))}
       </select>
