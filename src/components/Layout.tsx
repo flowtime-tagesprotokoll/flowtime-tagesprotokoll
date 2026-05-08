@@ -56,10 +56,10 @@ export function Layout({ children, rightSlot }: LayoutProps) {
               <button
                 type="button"
                 onClick={() => setShowDoku(true)}
-                className="rounded-lg bg-warn/20 border-2 border-warn text-warn hover:bg-warn/30 font-bold px-3 py-1.5 text-sm transition-colors flex items-center gap-1.5"
+                className="rounded-lg bg-warn/20 border border-warn/70 text-warn hover:bg-warn/30 hover:border-warn font-semibold text-xs px-3 py-1.5 transition-colors flex items-center gap-1.5"
                 title="Vorfall dokumentieren / Dokumentationsmeldung"
               >
-                <span className="text-base">📋</span>
+                <span>📋</span>
                 <span className="hidden sm:inline">Vorfall dokumentieren</span>
                 <span className="sm:hidden">Doku</span>
               </button>

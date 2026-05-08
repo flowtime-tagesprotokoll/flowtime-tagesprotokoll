@@ -72,6 +72,74 @@
   }
   .field-input {
     @apply w-full px-3 py-2.5 rounded text-[15px];
+    border: 1px solid #2a2a2a;
+    background: #0f0f0f;
+    color: #f5f5f5;
+    transition: border-color 120ms ease, background 120ms ease;
+  }
+  .field-input:focus {
+    outline: none;
+    border-color: #d4ff00;
+    background: #141414;
+  }
+
+  /* Pflichtfeld-Indikatoren: Wrapper bekommt Klasse, Input erbt Border-Farbe */
+  .field-wrap {
+    position: relative;
+  }
+  .field-wrap.is-empty .field-input,
+  .field-wrap.is-empty input,
+  .field-wrap.is-empty select,
+  .field-wrap.is-empty textarea {
+    border-color: rgba(251, 191, 36, 0.55);
+    background: rgba(251, 191, 36, 0.04);
+  }
+  .field-wrap.is-empty .field-input:focus,
+  .field-wrap.is-empty input:focus,
+  .field-wrap.is-empty select:focus,
+  .field-wrap.is-empty textarea:focus {
+    border-color: #fbbf24;
+    background: rgba(251, 191, 36, 0.07);
+  }
+  .field-wrap.is-filled .field-input,
+  .field-wrap.is-filled input,
+  .field-wrap.is-filled select,
+  .field-wrap.is-filled textarea {
+    border-color: rgba(74, 222, 128, 0.45);
+    background: rgba(74, 222, 128, 0.03);
+  }
+  .field-wrap.is-filled .field-input:focus,
+  .field-wrap.is-filled input:focus,
+  .field-wrap.is-filled select:focus,
+  .field-wrap.is-filled textarea:focus {
+    border-color: #4ade80;
+    background: rgba(74, 222, 128, 0.05);
+  }
+  .field-status-badge {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    width: 16px;
+    height: 16px;
+    border-radius: 9999px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    font-weight: 800;
+    font-family: 'JetBrains Mono', monospace;
+    pointer-events: none;
+    line-height: 1;
+    z-index: 1;
+  }
+  .field-wrap.is-filled .field-status-badge {
+    background: #4ade80;
+    color: #0a0a0a;
+  }
+  .field-wrap.is-empty .field-status-badge {
+    background: rgba(251, 191, 36, 0.18);
+    border: 1px solid rgba(251, 191, 36, 0.7);
+    color: #fbbf24;
   }
   .field-input.mono {
     font-family: 'JetBrains Mono', monospace;

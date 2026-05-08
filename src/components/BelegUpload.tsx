@@ -151,14 +151,18 @@ export function BelegUpload({
           onDragLeave={() => setDragOver(false)}
           onDrop={onDrop}
           style={{
-            border: `2px dashed ${dragOver || isFocused ? '#d4ff00' : '#2a2a2a'}`,
+            border: `2px dashed ${
+              dragOver || isFocused ? '#d4ff00' : 'rgba(251,191,36,0.55)'
+            }`,
             borderRadius: 5,
             padding: '14px 8px',
             textAlign: 'center',
             cursor: disabled ? 'not-allowed' : 'pointer',
             transition: 'all 0.15s',
-            background: dragOver || isFocused ? 'rgba(212,255,0,0.04)' : '#1c1c1c',
-            color: dragOver || isFocused ? '#d4ff00' : '#888',
+            background: dragOver || isFocused
+              ? 'rgba(212,255,0,0.04)'
+              : 'rgba(251,191,36,0.04)',
+            color: dragOver || isFocused ? '#d4ff00' : '#fbbf24',
             opacity: disabled ? 0.5 : 1,
             outline: 'none',
           }}

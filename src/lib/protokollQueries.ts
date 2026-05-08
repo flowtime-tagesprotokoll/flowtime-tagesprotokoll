@@ -193,7 +193,7 @@ export function useProtokollListe() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('protokolle')
-        .select('id, shop_id, datum, erstellt_am, schichten(schicht_nr, mitarbeiter_id, kassenist)')
+        .select('id, shop_id, datum, erstellt_am, schichten(schicht_nr, mitarbeiter_id, kassenist, kassenabrechnung)')
         .order('datum', { ascending: false })
         .limit(500);
       if (error) throw error;
@@ -202,7 +202,7 @@ export function useProtokollListe() {
         shop_id: string;
         datum: string;
         erstellt_am: string;
-        schichten: { schicht_nr: number; mitarbeiter_id: string | null; kassenist: number | null }[];
+        schichten: { schicht_nr: number; mitarbeiter_id: string | null; kassenist: number | null; kassenabrechnung: number | null }[];
       }>;
     },
   });

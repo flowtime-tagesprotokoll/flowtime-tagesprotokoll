@@ -667,24 +667,28 @@ export function ProtokollEditPage() {
               <span className="sub">aus Zählung</span>
             </div>
             <div className="data-cell">
-              <input
-                type="text"
-                inputMode="decimal"
-                value={s1Form.kassenist}
-                onChange={(e) => patchS1('kassenist', e.target.value)}
-                placeholder="0,00"
-                className="big-input"
-              />
+              <FieldStatus filled={!!s1Form.kassenist.trim()}>
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  value={s1Form.kassenist}
+                  onChange={(e) => patchS1('kassenist', e.target.value)}
+                  placeholder="0,00"
+                  className="big-input"
+                />
+              </FieldStatus>
             </div>
             <div className="data-cell">
-              <input
-                type="text"
-                inputMode="decimal"
-                value={s2Form.kassenist}
-                onChange={(e) => patchS2('kassenist', e.target.value)}
-                placeholder="0,00"
-                className="big-input"
-              />
+              <FieldStatus filled={!!s2Form.kassenist.trim()}>
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  value={s2Form.kassenist}
+                  onChange={(e) => patchS2('kassenist', e.target.value)}
+                  placeholder="0,00"
+                  className="big-input"
+                />
+              </FieldStatus>
             </div>
           </div>
 
@@ -710,24 +714,28 @@ export function ProtokollEditPage() {
               <span className="sub">offener Betrag</span>
             </div>
             <div className="data-cell">
-              <input
-                type="text"
-                inputMode="decimal"
-                value={s1Form.guthaben_kundenkarte}
-                onChange={(e) => patchS1('guthaben_kundenkarte', e.target.value)}
-                placeholder="0,00"
-                className="field-input mono text-right"
-              />
+              <FieldStatus filled={!!s1Form.guthaben_kundenkarte.trim()}>
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  value={s1Form.guthaben_kundenkarte}
+                  onChange={(e) => patchS1('guthaben_kundenkarte', e.target.value)}
+                  placeholder="0,00"
+                  className="field-input mono text-right"
+                />
+              </FieldStatus>
             </div>
             <div className="data-cell">
-              <input
-                type="text"
-                inputMode="decimal"
-                value={s2Form.guthaben_kundenkarte}
-                onChange={(e) => patchS2('guthaben_kundenkarte', e.target.value)}
-                placeholder="0,00"
-                className="field-input mono text-right"
-              />
+              <FieldStatus filled={!!s2Form.guthaben_kundenkarte.trim()}>
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  value={s2Form.guthaben_kundenkarte}
+                  onChange={(e) => patchS2('guthaben_kundenkarte', e.target.value)}
+                  placeholder="0,00"
+                  className="field-input mono text-right"
+                />
+              </FieldStatus>
             </div>
           </div>
 
@@ -738,24 +746,28 @@ export function ProtokollEditPage() {
               <span className="sub">noch nicht ausgezahlt</span>
             </div>
             <div className="data-cell">
-              <input
-                type="text"
-                inputMode="decimal"
-                value={s1Form.offene_auszahlungen}
-                onChange={(e) => patchS1('offene_auszahlungen', e.target.value)}
-                placeholder="0,00"
-                className="field-input mono text-right"
-              />
+              <FieldStatus filled={!!s1Form.offene_auszahlungen.trim()}>
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  value={s1Form.offene_auszahlungen}
+                  onChange={(e) => patchS1('offene_auszahlungen', e.target.value)}
+                  placeholder="0,00"
+                  className="field-input mono text-right"
+                />
+              </FieldStatus>
             </div>
             <div className="data-cell">
-              <input
-                type="text"
-                inputMode="decimal"
-                value={s2Form.offene_auszahlungen}
-                onChange={(e) => patchS2('offene_auszahlungen', e.target.value)}
-                placeholder="0,00"
-                className="field-input mono text-right"
-              />
+              <FieldStatus filled={!!s2Form.offene_auszahlungen.trim()}>
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  value={s2Form.offene_auszahlungen}
+                  onChange={(e) => patchS2('offene_auszahlungen', e.target.value)}
+                  placeholder="0,00"
+                  className="field-input mono text-right"
+                />
+              </FieldStatus>
             </div>
           </div>
 
@@ -857,6 +869,26 @@ export function ProtokollEditPage() {
   );
 }
 
+function FieldStatus({
+  filled,
+  optional,
+  children,
+}: {
+  filled: boolean;
+  optional?: boolean;
+  children: React.ReactNode;
+}) {
+  if (optional) return <div className="field-wrap">{children}</div>;
+  return (
+    <div className={`field-wrap ${filled ? 'is-filled' : 'is-empty'}`}>
+      {children}
+      <span className="field-status-badge" aria-hidden>
+        {filled ? '✓' : '○'}
+      </span>
+    </div>
+  );
+}
+
 function MitarbeiterSelect({
   value,
   onChange,
@@ -867,18 +899,20 @@ function MitarbeiterSelect({
   options: Profile[];
 }) {
   return (
-    <select
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-      className="field-input"
-    >
-      <option value="">— wählen —</option>
-      {options.map((m) => (
-        <option key={m.id} value={m.id}>
-          {m.name}
-        </option>
-      ))}
-    </select>
+    <FieldStatus filled={!!value}>
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="field-input"
+      >
+        <option value="">— wählen —</option>
+        {options.map((m) => (
+          <option key={m.id} value={m.id}>
+            {m.name}
+          </option>
+        ))}
+      </select>
+    </FieldStatus>
   );
 }
 
@@ -897,18 +931,22 @@ function ZeitInputs({
 }) {
   return (
     <div className="grid grid-cols-[1fr_1fr_auto] gap-1.5 items-center">
-      <input
-        type="time"
-        value={von}
-        onChange={(e) => onVon(e.target.value)}
-        className="field-input mono"
-      />
-      <input
-        type="time"
-        value={bis}
-        onChange={(e) => onBis(e.target.value)}
-        className="field-input mono"
-      />
+      <FieldStatus filled={!!von}>
+        <input
+          type="time"
+          value={von}
+          onChange={(e) => onVon(e.target.value)}
+          className="field-input mono"
+        />
+      </FieldStatus>
+      <FieldStatus filled={!!bis}>
+        <input
+          type="time"
+          value={bis}
+          onChange={(e) => onBis(e.target.value)}
+          className="field-input mono"
+        />
+      </FieldStatus>
       <span className="text-xs mono text-accent px-2">
         {stunden > 0 ? formatStunden(stunden) : '–'}
       </span>
@@ -936,14 +974,16 @@ function KassenstartInput({
   return (
     <div>
       <div className="grid grid-cols-[1fr_auto] gap-1.5">
-        <input
-          type="text"
-          inputMode="decimal"
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          placeholder="0,00"
-          className="field-input mono text-right"
-        />
+        <FieldStatus filled={!!value.trim()}>
+          <input
+            type="text"
+            inputMode="decimal"
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
+            placeholder="0,00"
+            className="field-input mono text-right"
+          />
+        </FieldStatus>
         {vortagBtn && (
           <button
             type="button"
@@ -979,31 +1019,49 @@ function ZBonInput({
   value: string;
   onChange: (v: string) => void;
 }) {
+  const filled = !!value.trim();
   return (
     <>
-      <input
-        type="text"
-        inputMode="decimal"
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder="Endbetrag €"
-        style={{
-          width: '100%',
-          padding: '14px 16px',
-          borderRadius: 6,
-          fontFamily: '"JetBrains Mono", monospace',
-          fontSize: 24,
-          fontWeight: 700,
-          textAlign: 'right',
-          background: '#0a0a0a',
-          border: '2px solid #fbbf24',
-          color: '#fbbf24',
-          boxShadow: '0 0 0 1px rgba(251,191,36,0.3)',
-        }}
-      />
+      <div className="relative">
+        <input
+          type="text"
+          inputMode="decimal"
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder="Endbetrag €"
+          style={{
+            width: '100%',
+            padding: '14px 16px',
+            borderRadius: 6,
+            fontFamily: '"JetBrains Mono", monospace',
+            fontSize: 24,
+            fontWeight: 700,
+            textAlign: 'right',
+            background: filled ? 'rgba(74,222,128,0.06)' : '#0a0a0a',
+            border: filled ? '2px solid #4ade80' : '2px solid #fbbf24',
+            color: filled ? '#4ade80' : '#fbbf24',
+            boxShadow: filled
+              ? '0 0 0 1px rgba(74,222,128,0.25)'
+              : '0 0 0 1px rgba(251,191,36,0.3)',
+          }}
+        />
+        <span
+          className="field-status-badge"
+          style={{
+            top: 8,
+            right: 8,
+            background: filled ? '#4ade80' : 'rgba(251,191,36,0.18)',
+            border: filled ? 'none' : '1px solid rgba(251,191,36,0.7)',
+            color: filled ? '#0a0a0a' : '#fbbf24',
+          }}
+          aria-hidden
+        >
+          {filled ? '✓' : '○'}
+        </span>
+      </div>
       <div
         className="text-[11px] mono mt-1.5 mb-1"
-        style={{ color: '#fbbf24', opacity: 0.85 }}
+        style={{ color: filled ? '#4ade80' : '#fbbf24', opacity: 0.85 }}
       >
         ↑ Endbetrag aus Kassenausdruck eintragen
       </div>

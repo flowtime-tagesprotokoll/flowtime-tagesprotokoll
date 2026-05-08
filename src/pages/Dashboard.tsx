@@ -188,26 +188,26 @@ export function DashboardPage() {
 
           {filtered.length > 0 && (
             <div className="divide-y divide-border-soft">
-              <div className="grid grid-cols-[110px_70px_1fr_1fr_70px] gap-2 px-4 py-2 text-[10px] uppercase tracking-wider text-muted bg-surface-2">
+              <div className="grid grid-cols-[110px_70px_1fr_1fr_90px] gap-2 px-4 py-2 text-[10px] uppercase tracking-wider text-muted bg-surface-2">
                 <div>Datum</div>
                 <div>Shop</div>
                 <div>Schicht 1</div>
                 <div>Schicht 2</div>
-                <div className="text-right">IST gesamt</div>
+                <div className="text-right">Z-Bon Σ</div>
               </div>
               {filtered.map((p) => {
                 const shop = shopMap.get(p.shop_id);
                 const s1 = p.schichten.find((s) => s.schicht_nr === 1);
                 const s2 = p.schichten.find((s) => s.schicht_nr === 2);
-                const istTotal =
-                  (s1?.kassenist ?? 0) + (s2?.kassenist ?? 0);
+                const zbonTotal =
+                  (s1?.kassenabrechnung ?? 0) + (s2?.kassenabrechnung ?? 0);
                 const isToday = p.datum === heute;
                 return (
                   <button
                     key={p.id}
                     type="button"
                     onClick={() => navigate(`/protokoll/${p.shop_id}/${p.datum}`)}
-                    className="w-full grid grid-cols-[110px_70px_1fr_1fr_70px] gap-2 px-4 py-2.5 text-sm text-left hover:bg-surface-2 transition-colors items-center"
+                    className="w-full grid grid-cols-[110px_70px_1fr_1fr_90px] gap-2 px-4 py-2.5 text-sm text-left hover:bg-surface-2 transition-colors items-center"
                   >
                     <div className="mono">
                       {fmtDate(p.datum)}
@@ -228,8 +228,8 @@ export function DashboardPage() {
                         ? profileMap.get(s2.mitarbeiter_id) ?? '—'
                         : <span className="text-muted-2">leer</span>}
                     </div>
-                    <div className="mono text-right text-xs">
-                      {istTotal > 0 ? formatEur(istTotal) : '—'}
+                    <div className="mono text-right text-xs" style={{ color: '#fbbf24' }}>
+                      {zbonTotal > 0 ? formatEur(zbonTotal) : '—'}
                     </div>
                   </button>
                 );
