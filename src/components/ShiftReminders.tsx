@@ -142,6 +142,32 @@ export function buildReminders(name: string): Reminder[] {
       ),
     },
     {
+      emoji: '💬',
+      accent: '#fbbf24',
+      title: 'Spielverhalten angesprochen?',
+      body: (
+        <>
+          <p className="text-lg leading-relaxed">
+            <strong>{name}</strong>, kurze Erinnerung: Wenn du heute einen
+            Gast auf <strong>auffälliges Spielverhalten</strong> ansprichst —
+            bitte gleich anschließend kurz hier <strong>dokumentieren</strong>.
+          </p>
+          <p className="text-base text-muted mt-2">
+            Genau für solche Gespräche gibt's oben rechts den Button{' '}
+            <span className="bg-warn/20 border-2 border-warn text-warn font-bold px-2 py-0.5 rounded">
+              📋 Vorfall dokumentieren
+            </span>{' '}
+            → Kategorie <em>„Gast auf Spielverhalten angesprochen"</em>.
+          </p>
+          <p className="text-sm text-muted mt-2">
+            Klingt nach Aufwand, ist aber nur ein Klick — und im Zweifel ist
+            genau diese Notiz das, was uns vor Ärger mit der Behörde schützt.
+            Danke! 🙏
+          </p>
+        </>
+      ),
+    },
+    {
       emoji: '👕',
       accent: '#fb923c',
       title: 'Style-Check',
