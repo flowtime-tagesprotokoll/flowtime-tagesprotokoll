@@ -178,27 +178,38 @@ export function ShiftReminders() {
     orderRef.current = shuffle([...reminders.keys()]);
     cursorRef.current = 0;
 
-    function scheduleNext() {
-      if (timerRef.current) clearTimeout(timerRef.current);
-      timerRef.current = setTimeout(() => {
-        const idx = orderRef.current[cursorRef.current % orderRef.current.length];
-        cursorRef.current++;
-        // Wenn die ganze Liste durch ist, neu mischen
-        if (cursorRef.current >= orderRef.current.length) {
-          orderRef.current = shuffle([...reminders.keys()]);
-          cursorRef.current = 0;
-        }
-        const r = reminders[idx];
-        showReminderNotification({
-          title: `${r.emoji} ${r.title}`,
-          body: typeof r.body === 'string' ? r.body : r.title,
-          tag: `flowtime-reminder-${idx}`,
-        });
-        setActiveIndex(idx);
-      }, nextDelayMs());
+    function showAt(idx: number) {
+      const r = reminders[idx];
+      showReminderNotification({
+        title: `${r.emoji} ${r.title}`,
+        body: typeof r.body === 'string' ? r.body : r.title,
+        tag: `flowtime-reminder-${idx}`,
+      });
+      setActiveIndex(idx);
     }
 
-    scheduleNext();
+    function pickNextIdx(): number {
+      const idx = orderRef.current[cursorRef.current % orderRef.current.length];
+      cursorRef.current++;
+      // Wenn die ganze Liste durch ist, neu mischen
+      if (cursorRef.current >= orderRef.current.length) {
+        orderRef.current = shuffle([...reminders.keys()]);
+        cursorRef.current = 0;
+      }
+      return idx;
+    }
+
+    function scheduleNext(delayMs: number) {
+      if (timerRef.current) clearTimeout(timerRef.current);
+      timerRef.current = setTimeout(() => {
+        showAt(pickNextIdx());
+      }, delayMs);
+    }
+
+    // Erster Reminder direkt nach Login (nach kurzer Verzoegerung,
+    // damit das UI eingerichtet ist und Notification-Permission
+    // ggf. schon erteilt wurde).
+    scheduleNext(1500);
     return () => {
       if (timerRef.current) clearTimeout(timerRef.current);
     };
