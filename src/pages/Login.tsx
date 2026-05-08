@@ -147,6 +147,7 @@ function AdminLoginModal({ profile, onClose, onSuccess }: AdminLoginModalProps) 
       setErr('Login fehlgeschlagen.');
       return;
     }
+    ensureNotificationPermission().catch(() => {});
     onSuccess(data.user.id, profile);
   }
 

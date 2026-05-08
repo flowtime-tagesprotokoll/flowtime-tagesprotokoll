@@ -37,6 +37,7 @@ export function DashboardPage() {
 
   const [filterShop, setFilterShop] = useState<string>('all');
   const [filterMonth, setFilterMonth] = useState<string>('');
+  const [adminDatum, setAdminDatum] = useState<string>(heute);
 
   const filtered = useMemo(() => {
     let rows = protokolle ?? [];
@@ -82,6 +83,44 @@ export function DashboardPage() {
             <div className="text-[11px] text-muted">
               Pro Tag und Shop kann nur ein Protokoll existieren. Bestehende werden geöffnet.
             </div>
+
+            {isAdmin && (
+              <div className="mt-3 pt-3 border-t border-border-soft space-y-2">
+                <div className="text-[10px] mono uppercase tracking-wider text-muted">
+                  Protokoll für anderes Datum öffnen / nachtragen
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <input
+                    type="date"
+                    value={adminDatum}
+                    onChange={(e) => setAdminDatum(e.target.value)}
+                    max={heute}
+                    className="text-xs px-2 py-1.5 rounded mono"
+                  />
+                  {(shops ?? []).map((s) => {
+                    const exists = (protokolle ?? []).some(
+                      (p) => p.shop_id === s.id && p.datum === adminDatum,
+                    );
+                    return (
+                      <button
+                        key={s.id}
+                        type="button"
+                        onClick={() => navigate(`/protokoll/${s.id}/${adminDatum}`)}
+                        className="btn-ghost flex items-center gap-1.5 text-xs px-3 py-1.5"
+                      >
+                        <span
+                          className={`w-1.5 h-1.5 rounded-full ${exists ? 'bg-plus' : 'bg-warn'}`}
+                        />
+                        {s.kurz}
+                        <span className="text-[10px] text-muted">
+                          {exists ? 'öffnen' : 'nachtragen'}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
           </div>
           <div className="bg-surface border border-border rounded-lg p-4">
             <div className="text-[10px] mono uppercase tracking-wider text-muted mb-1">
