@@ -141,6 +141,27 @@ export function buildReminders(name: string): Reminder[] {
         </p>
       ),
     },
+    {
+      emoji: '👕',
+      accent: '#fb923c',
+      title: 'Style-Check',
+      body: (
+        <>
+          <p className="text-lg leading-relaxed">
+            Kurzer Blick in den Spiegel, <strong>{name}</strong> 👀 — sitzt
+            das <strong>Tipwin-Outfit</strong>?
+          </p>
+          <p className="text-base text-muted mt-2">
+            Mit Uniform sehen wir aus wie ein Team. Ohne Uniform sehen wir aus
+            wie der Kunde, der sich aus Versehen hinter den Tresen verirrt
+            hat. 🙂
+          </p>
+          <p className="text-sm text-muted mt-2">
+            Falls grad nicht — kurz wechseln, alles gut.
+          </p>
+        </>
+      ),
+    },
   ];
 }
 
