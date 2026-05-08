@@ -1,22 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { useAuth } from '../lib/authStore';
-import { isTauri } from '../lib/updater';
-
-/** Holt das Fenster nach vorne, falls minimiert oder im Hintergrund. */
-async function bringToFront() {
-  if (!isTauri()) return;
-  try {
-    const { getCurrentWindow } = await import('@tauri-apps/api/window');
-    const w = getCurrentWindow();
-    await w.show();
-    await w.unminimize();
-    await w.setFocus();
-    await w.requestUserAttention(1); // Critical → Taskbar blinkt
-  } catch (e) {
-    console.warn('[reminder] bringToFront fehlgeschlagen:', e);
-  }
-}
+import { showReminderNotification } from '../lib/notify';
 
 interface Reminder {
   emoji: string;
@@ -202,8 +187,13 @@ export function ShiftReminders() {
           orderRef.current = shuffle([...reminders.keys()]);
           cursorRef.current = 0;
         }
+        const r = reminders[idx];
+        showReminderNotification({
+          title: `${r.emoji} ${r.title}`,
+          body: typeof r.body === 'string' ? r.body : r.title,
+          tag: `flowtime-reminder-${idx}`,
+        });
         setActiveIndex(idx);
-        bringToFront();
       }, nextDelayMs());
     }
 
@@ -233,8 +223,13 @@ export function ShiftReminders() {
         orderRef.current = shuffle([...reminders.keys()]);
         cursorRef.current = 0;
       }
+      const rNext = reminders[idx];
+      showReminderNotification({
+        title: `${rNext.emoji} ${rNext.title}`,
+        body: rNext.title,
+        tag: `flowtime-reminder-${idx}`,
+      });
       setActiveIndex(idx);
-      bringToFront();
     }, nextDelayMs());
   }
 

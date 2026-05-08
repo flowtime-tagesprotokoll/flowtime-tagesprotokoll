@@ -6,6 +6,7 @@ import { useProfiles } from '../lib/queries';
 import { useAuth } from '../lib/authStore';
 import { supabase } from '../lib/supabase';
 import { verifyPin } from '../lib/pin';
+import { ensureNotificationPermission } from '../lib/notify';
 import type { Profile } from '../lib/types';
 
 export function LoginPage() {
@@ -27,6 +28,7 @@ export function LoginPage() {
       setPinProfile(p);
       setPinErr(null);
     } else {
+      ensureNotificationPermission().catch(() => {});
       setMitarbeiter(p);
       navigate('/');
     }
@@ -42,6 +44,7 @@ export function LoginPage() {
       setPinErr('PIN falsch.');
       return;
     }
+    ensureNotificationPermission().catch(() => {});
     setMitarbeiter(pinProfile);
     setPinProfile(null);
     navigate('/');
