@@ -344,15 +344,23 @@
     font-family: 'JetBrains Mono', monospace;
   }
 
-  /* Optische Trennung zwischen Schicht 1 und Schicht 2 durch Freiraum.
-     Der dritte Slot in einer drei-spaltigen Zeile ist Schicht 2. */
+  /* Optische Trennung Schicht 1 / Schicht 2:
+     - Atemraum durch zusaetzliches Innen-Padding
+     - dezente vertikale Linie auf der rechten Seite von Schicht 1
+     - Section-Reihen (Gradienten) laufen durchgehend, ohne Bruch */
   @media (min-width: 901px) {
-    .protokoll-table > .row > :nth-child(2) {
-      margin-right: 10px;
-      border-right: none;
+    .protokoll-table > .row:not(.section-row) > :nth-child(2) {
+      padding-right: 18px;
+      border-right: 1px solid rgba(255, 255, 255, 0.08);
     }
-    .protokoll-table > .row > :nth-child(3) {
-      margin-left: 10px;
+    .protokoll-table > .row:not(.section-row) > :nth-child(3) {
+      padding-left: 18px;
+    }
+    /* Section-Reihen behalten Standard-Padding und keinen Border-Bruch,
+       damit die Farbverlauefe sauber durchziehen. */
+    .protokoll-table > .row.section-row > :nth-child(2),
+    .protokoll-table > .row.section-row > :nth-child(3) {
+      border-right: none;
       border-left: none;
     }
   }
