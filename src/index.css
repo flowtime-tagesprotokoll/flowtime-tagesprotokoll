@@ -344,14 +344,16 @@
     font-family: 'JetBrains Mono', monospace;
   }
 
-  /* Klare senkrechte Trennlinie zwischen Schicht 1 und Schicht 2.
-     Der dritte Slot in einer drei-spaltigen Zeile ist immer Schicht 2. */
+  /* Optische Trennung zwischen Schicht 1 und Schicht 2 durch Freiraum.
+     Der dritte Slot in einer drei-spaltigen Zeile ist Schicht 2. */
   @media (min-width: 901px) {
-    .protokoll-table > .row > :nth-child(3) {
-      border-left: 2px solid #3a3a3a;
+    .protokoll-table > .row > :nth-child(2) {
+      margin-right: 10px;
+      border-right: none;
     }
-    .protokoll-table > .row.section-row.with-cols > :nth-child(3) {
-      border-left: 2px solid rgba(255, 255, 255, 0.18);
+    .protokoll-table > .row > :nth-child(3) {
+      margin-left: 10px;
+      border-left: none;
     }
   }
 
