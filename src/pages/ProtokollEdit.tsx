@@ -181,6 +181,11 @@ export function ProtokollEditPage() {
 
   // Vortags-Kasse als Schicht-1-Kassenstart vorschlagen — nur einmal nach Initial-Load
   const vortagApplied = useRef(false);
+  // Wenn Schicht-Datensatz wechselt (anderes Datum / anderer Shop), Flag resetten,
+  // damit der Vortag fuer das neue Protokoll erneut angewandt werden kann.
+  useEffect(() => {
+    vortagApplied.current = false;
+  }, [schicht1?.id]);
   useEffect(() => {
     if (vortagApplied.current) return;
     if (!schicht1 || !vortag || !s1Form) return;
@@ -366,6 +371,26 @@ export function ProtokollEditPage() {
       ? { vortagIst: vortag.ist, heutigerStart: startNum, datum: vortag.datum }
       : null;
 
+  // Zaehlt offene Pflichtfelder pro Schicht. Nur als Hinweis fuer den User -
+  // die App speichert weiterhin alles, ist nicht blockierend.
+  function offenePflichtCount(f: typeof s1Form): number {
+    if (!f) return 0;
+    const fields = [
+      f.mitarbeiter_id,
+      f.zeit_von,
+      f.zeit_bis,
+      f.kassenstart,
+      f.kassenabrechnung,
+      f.kassenist,
+      f.guthaben_kundenkarte,
+      f.offene_auszahlungen,
+    ];
+    return fields.filter((v) => !v || (typeof v === 'string' && v.trim() === '')).length;
+  }
+  const offenS1 = offenePflichtCount(s1Form);
+  const offenS2 = offenePflichtCount(s2Form);
+  const showPflichtHinweis = offenS1 + offenS2 > 0;
+
   return (
     <Layout>
       <div className="max-w-5xl mx-auto px-3 sm:px-6 py-5 space-y-4">
@@ -401,6 +426,31 @@ export function ProtokollEditPage() {
         {isAdmin && datum !== new Date().toISOString().slice(0, 10) && (
           <div className="bg-warn/10 border border-warn/30 text-warn rounded p-2 text-xs mono">
             ⚠ Admin-Bearbeitung — dies ist nicht das heutige Datum.
+          </div>
+        )}
+
+        {showPflichtHinweis && (
+          <div
+            className="rounded-lg p-3 text-sm flex items-start gap-3"
+            style={{
+              background: 'rgba(251,191,36,0.10)',
+              border: '1px solid rgba(251,191,36,0.45)',
+            }}
+          >
+            <span className="text-xl leading-none mt-0.5">💡</span>
+            <div className="flex-1">
+              <div className="font-bold" style={{ color: '#fbbf24' }}>
+                Felder mit gelbem Rahmen sind Pflicht — bitte ausfüllen.
+              </div>
+              <div className="text-[13px] text-muted mt-0.5">
+                Sobald ein Feld einen Wert hat, wird der Rahmen grün und ein
+                ✓ erscheint. Einlagen, Entnahmen, Kommentar und Übergabe-Notiz
+                sind freiwillig.
+              </div>
+              <div className="text-[12px] mono mt-1" style={{ color: '#fbbf24' }}>
+                Noch offen: Schicht 1 = {offenS1} Feld{offenS1 === 1 ? '' : 'er'} · Schicht 2 = {offenS2} Feld{offenS2 === 1 ? '' : 'er'}
+              </div>
+            </div>
           </div>
         )}
 

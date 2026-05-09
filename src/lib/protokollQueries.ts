@@ -217,33 +217,37 @@ export function useProtokollListe() {
 }
 
 /**
- * Findet IST-Wert des letzten Protokolls dieses Shops vor `datum`
- * (für Vortags-Übernahme als Kassenstart).
+ * Findet IST-Wert der letzten Schicht dieses Shops vor `datum`.
+ * Geht systematisch zurueck, ueberspringt Tage ohne IST (z.B. leere
+ * vom Admin angelegte Platzhalter), nimmt aus dem gefundenen Tag die
+ * spaeteste Schicht mit IST (Schicht 2 bevorzugt, sonst Schicht 1).
  */
 export function useVortagKasse(shopId: string, datum: string) {
   return useQuery({
     queryKey: ['vortag', shopId, datum],
     queryFn: async (): Promise<{ datum: string; ist: number } | null> => {
-      const { data: proto, error } = await supabase
-        .from('protokolle')
-        .select('id, datum')
-        .eq('shop_id', shopId)
-        .lt('datum', datum)
-        .order('datum', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      if (error) throw error;
-      if (!proto) return null;
-
-      const { data: schichten } = await supabase
+      // JOIN ueber protokolle holt direkt nur Schichten mit nicht-NULL IST.
+      const { data, error } = await supabase
         .from('schichten')
-        .select('schicht_nr, kassenist')
-        .eq('protokoll_id', proto.id)
-        .order('schicht_nr', { ascending: false });
-
-      const ist = (schichten ?? []).find((s) => s.kassenist !== null)?.kassenist;
-      if (ist === undefined || ist === null) return null;
-      return { datum: proto.datum, ist: Number(ist) };
+        .select('kassenist, schicht_nr, protokolle!inner(shop_id, datum)')
+        .eq('protokolle.shop_id', shopId)
+        .lt('protokolle.datum', datum)
+        .not('kassenist', 'is', null)
+        .order('datum', { ascending: false, foreignTable: 'protokolle' })
+        .order('schicht_nr', { ascending: false })
+        .limit(1);
+      if (error) throw error;
+      const raw = (data ?? [])[0] as unknown as
+        | {
+            kassenist: number;
+            schicht_nr: number;
+            protokolle: { datum: string } | { datum: string }[];
+          }
+        | undefined;
+      if (!raw || raw.kassenist === null) return null;
+      const proto = Array.isArray(raw.protokolle) ? raw.protokolle[0] : raw.protokolle;
+      if (!proto) return null;
+      return { datum: proto.datum, ist: Number(raw.kassenist) };
     },
   });
 }
