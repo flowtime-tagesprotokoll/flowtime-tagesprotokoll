@@ -225,12 +225,44 @@ export function ProtokollEditPage() {
   s1FormRef.current = s1Form;
   s2FormRef.current = s2Form;
 
-  // Save-Funktionen mit Debounce
+  // Save-Funktionen mit Debounce — beide Schichten koennen unabhaengig
+  // pending sein (sonst loescht z.B. der Auto-Carry S1->S2 den Save fuer S1).
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  function scheduleSave(which: 1 | 2) {
-    if (saveTimer.current) clearTimeout(saveTimer.current);
-    saveTimer.current = setTimeout(() => saveShift(which), 800);
+  const pendingSaves = useRef<Set<1 | 2>>(new Set());
+  function flushPending() {
+    if (saveTimer.current) {
+      clearTimeout(saveTimer.current);
+      saveTimer.current = null;
+    }
+    const list = Array.from(pendingSaves.current);
+    pendingSaves.current.clear();
+    for (const w of list) {
+      // fire-and-forget — beim Unmount koennen wir nicht awaiten
+      void saveShift(w);
+    }
   }
+  function scheduleSave(which: 1 | 2) {
+    pendingSaves.current.add(which);
+    if (saveTimer.current) clearTimeout(saveTimer.current);
+    saveTimer.current = setTimeout(async () => {
+      const list = Array.from(pendingSaves.current);
+      pendingSaves.current.clear();
+      for (const w of list) {
+        await saveShift(w);
+      }
+    }, 800);
+  }
+  // Beim Unmount oder Tab-Schliessen: pending Saves sofort feuern,
+  // damit Eintraege im 800ms-Debounce-Fenster nicht verloren gehen.
+  useEffect(() => {
+    const handleUnload = () => flushPending();
+    window.addEventListener('beforeunload', handleUnload);
+    return () => {
+      window.removeEventListener('beforeunload', handleUnload);
+      flushPending();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   async function saveShift(which: 1 | 2) {
     const form = which === 1 ? s1FormRef.current : s2FormRef.current;

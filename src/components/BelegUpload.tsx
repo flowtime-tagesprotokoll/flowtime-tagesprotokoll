@@ -136,6 +136,15 @@ export function BelegUpload({
             ×
           </button>
         </div>
+      ) : belegPath ? (
+        // belegPath gesetzt, signedUrl wird noch geladen — sanftes Loading,
+        // KEIN faelschlicher 'Beleg fehlt'-Hinweis.
+        <div
+          className="text-[11px] mono text-muted text-center py-3"
+          style={{ border: '1px dashed #2a2a2a', borderRadius: 5 }}
+        >
+          Lade Beleg …
+        </div>
       ) : (
         <div
           ref={dropRef}
