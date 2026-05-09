@@ -195,8 +195,15 @@ export function DashboardPage() {
                 <>
                   <span
                     className="text-[11px] mono px-2 py-0.5 rounded"
-                    style={{ background: 'rgba(251,191,36,0.12)', color: '#fbbf24' }}
-                    title="Summe aller Z-Bons in der aktuellen Auswahl"
+                    style={
+                      filteredZBonSumme < 0
+                        ? {
+                            background: 'rgba(248,113,113,0.18)',
+                            color: '#f87171',
+                          }
+                        : { background: 'rgba(251,191,36,0.12)', color: '#fbbf24' }
+                    }
+                    title="Summe aller Z-Bons in der aktuellen Auswahl (Negativwerte werden mitgerechnet)"
                   >
                     Z-Bon Σ {formatEur(filteredZBonSumme)}
                   </span>
@@ -273,6 +280,9 @@ export function DashboardPage() {
                 const shop = shopMap.get(p.shop_id);
                 const s1 = p.schichten.find((s) => s.schicht_nr === 1);
                 const s2 = p.schichten.find((s) => s.schicht_nr === 2);
+                const zbonHasValue =
+                  s1?.kassenabrechnung !== null && s1?.kassenabrechnung !== undefined ||
+                  s2?.kassenabrechnung !== null && s2?.kassenabrechnung !== undefined;
                 const zbonTotal =
                   (s1?.kassenabrechnung ?? 0) + (s2?.kassenabrechnung ?? 0);
                 const isToday = p.datum === heute;
@@ -325,8 +335,17 @@ export function DashboardPage() {
                         ? profileMap.get(s2.mitarbeiter_id) ?? '—'
                         : <span className="text-muted-2">leer</span>}
                     </div>
-                    <div className="mono text-right text-xs" style={{ color: '#fbbf24' }}>
-                      {zbonTotal > 0 ? formatEur(zbonTotal) : '—'}
+                    <div
+                      className="mono text-right text-xs"
+                      style={{
+                        color: !zbonHasValue
+                          ? undefined
+                          : zbonTotal < 0
+                            ? '#f87171'
+                            : '#fbbf24',
+                      }}
+                    >
+                      {zbonHasValue ? formatEur(zbonTotal) : '—'}
                     </div>
                   </button>
                 );
