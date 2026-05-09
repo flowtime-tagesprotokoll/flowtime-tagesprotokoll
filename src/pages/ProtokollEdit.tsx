@@ -701,23 +701,22 @@ export function ProtokollEditPage() {
             className="row section-row with-cols"
             style={{
               background:
-                'linear-gradient(to right, rgba(251,191,36,0.18), rgba(251,191,36,0.08))',
-              borderTop: '2px solid #fbbf24',
-              borderBottom: '2px solid #fbbf24',
+                'linear-gradient(to right, rgba(167,139,250,0.16), rgba(167,139,250,0.06))',
+              borderTop: '2px solid #a78bfa',
+              borderBottom: '2px solid #a78bfa',
             }}
           >
-            <div className="section-title" style={{ color: '#fbbf24', fontSize: 13 }}>
+            <div className="section-title" style={{ color: '#a78bfa', fontSize: 13 }}>
               🧾 Kassenabrechnung (Z-Bon)
             </div>
-            <div className="schicht-tag" style={{ color: '#fbbf24' }}>Schicht 1 (Früh)</div>
-            <div className="schicht-tag" style={{ color: '#fbbf24' }}>Schicht 2 (Spät)</div>
+            <div className="schicht-tag" style={{ color: '#a78bfa' }}>Schicht 1 (Früh)</div>
+            <div className="schicht-tag" style={{ color: '#a78bfa' }}>Schicht 2 (Spät)</div>
           </div>
           <div className="row">
             <div
               className="label-cell"
               style={{
-                color: '#fbbf24',
-                background: 'rgba(251,191,36,0.08)',
+                color: '#a78bfa',
                 fontSize: 14,
               }}
             >
@@ -726,8 +725,7 @@ export function ProtokollEditPage() {
             <div
               className="data-cell"
               style={{
-                background: 'rgba(251,191,36,0.10)',
-                borderLeft: '3px solid #fbbf24',
+                borderLeft: '3px solid #a78bfa',
               }}
             >
               <ZBonInput
@@ -754,8 +752,7 @@ export function ProtokollEditPage() {
             <div
               className="data-cell"
               style={{
-                background: 'rgba(251,191,36,0.10)',
-                borderLeft: '3px solid #fbbf24',
+                borderLeft: '3px solid #a78bfa',
               }}
             >
               <ZBonInput
