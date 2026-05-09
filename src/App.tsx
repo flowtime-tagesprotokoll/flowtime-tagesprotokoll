@@ -12,6 +12,7 @@ import { AdminMitarbeiterPage } from './pages/AdminMitarbeiter';
 import { AdminShopsPage } from './pages/AdminShops';
 import { useAuth } from './lib/authStore';
 import { checkForUpdates } from './lib/updater';
+import { SingleInstanceGate } from './components/SingleInstance';
 import { useEffect } from 'react';
 import type { ReactNode } from 'react';
 
@@ -39,6 +40,7 @@ export default function App() {
   }, []);
 
   return (
+    <SingleInstanceGate>
     <QueryClientProvider client={queryClient}>
       <BrowserRouter basename={import.meta.env.BASE_URL}>
         <Routes>
@@ -126,5 +128,6 @@ export default function App() {
         </Routes>
       </BrowserRouter>
     </QueryClientProvider>
+    </SingleInstanceGate>
   );
 }
