@@ -478,8 +478,7 @@ export function ProtokollEditPage() {
               </div>
               <div className="text-[13px] text-muted mt-0.5">
                 Sobald ein Feld einen Wert hat, wird der Rahmen grün und ein
-                ✓ erscheint. Einlagen, Entnahmen, Kommentar und Übergabe-Notiz
-                sind freiwillig.
+                ✓ erscheint.
               </div>
               <div className="text-[12px] mono mt-1" style={{ color: '#fbbf24' }}>
                 Noch offen: Schicht 1 = {offenS1} Feld{offenS1 === 1 ? '' : 'er'} · Schicht 2 = {offenS2} Feld{offenS2 === 1 ? '' : 'er'}
