@@ -218,36 +218,55 @@ export function useProtokollListe() {
 
 /**
  * Findet IST-Wert der letzten Schicht dieses Shops vor `datum`.
- * Geht systematisch zurueck, ueberspringt Tage ohne IST (z.B. leere
- * vom Admin angelegte Platzhalter), nimmt aus dem gefundenen Tag die
- * spaeteste Schicht mit IST (Schicht 2 bevorzugt, sonst Schicht 1).
+ *
+ * Vorgehen (zwei sehr simple Schritte):
+ *  1. Hole bis zu 30 Protokolle dieses Shops, die VOR `datum` liegen,
+ *     absteigend sortiert. Damit erfassen wir auch leere Platzhalter-Tage.
+ *  2. Hole die zugehoerigen Schichten dieser Protokolle (alle auf einmal).
+ *  3. Walke durch die Protokolle vom neuesten zum aeltesten:
+ *     - innerhalb eines Tages: Schicht 2 vor Schicht 1 (spaetere wins)
+ *     - sobald ein non-null kassenist gefunden ist -> return
+ *  Damit werden Platzhalter-Tage ohne echte IST automatisch uebersprungen.
  */
 export function useVortagKasse(shopId: string, datum: string) {
   return useQuery({
     queryKey: ['vortag', shopId, datum],
     queryFn: async (): Promise<{ datum: string; ist: number } | null> => {
-      // JOIN ueber protokolle holt direkt nur Schichten mit nicht-NULL IST.
-      const { data, error } = await supabase
+      const { data: protos, error: pErr } = await supabase
+        .from('protokolle')
+        .select('id, datum')
+        .eq('shop_id', shopId)
+        .lt('datum', datum)
+        .order('datum', { ascending: false })
+        .limit(30);
+      if (pErr) throw pErr;
+      if (!protos || protos.length === 0) return null;
+
+      const protoIds = protos.map((p) => p.id);
+      const { data: schichten, error: sErr } = await supabase
         .from('schichten')
-        .select('kassenist, schicht_nr, protokolle!inner(shop_id, datum)')
-        .eq('protokolle.shop_id', shopId)
-        .lt('protokolle.datum', datum)
-        .not('kassenist', 'is', null)
-        .order('datum', { ascending: false, foreignTable: 'protokolle' })
-        .order('schicht_nr', { ascending: false })
-        .limit(1);
-      if (error) throw error;
-      const raw = (data ?? [])[0] as unknown as
-        | {
-            kassenist: number;
-            schicht_nr: number;
-            protokolle: { datum: string } | { datum: string }[];
-          }
-        | undefined;
-      if (!raw || raw.kassenist === null) return null;
-      const proto = Array.isArray(raw.protokolle) ? raw.protokolle[0] : raw.protokolle;
-      if (!proto) return null;
-      return { datum: proto.datum, ist: Number(raw.kassenist) };
+        .select('protokoll_id, schicht_nr, kassenist')
+        .in('protokoll_id', protoIds);
+      if (sErr) throw sErr;
+
+      // Schichten pro Protokoll gruppieren
+      const byProto = new Map<string, { schicht_nr: number; kassenist: number | null }[]>();
+      for (const s of schichten ?? []) {
+        const list = byProto.get(s.protokoll_id) ?? [];
+        list.push({ schicht_nr: s.schicht_nr, kassenist: s.kassenist });
+        byProto.set(s.protokoll_id, list);
+      }
+
+      // Vom neuesten Protokoll abwaerts: spaeteste Schicht mit IST nehmen
+      for (const p of protos) {
+        const list = byProto.get(p.id) ?? [];
+        const sorted = [...list].sort((a, b) => b.schicht_nr - a.schicht_nr);
+        const hit = sorted.find((s) => s.kassenist !== null && s.kassenist !== undefined);
+        if (hit) {
+          return { datum: p.datum, ist: Number(hit.kassenist) };
+        }
+      }
+      return null;
     },
   });
 }

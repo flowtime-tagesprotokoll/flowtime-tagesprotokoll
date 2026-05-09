@@ -19,7 +19,6 @@ import {
   diffIsWarn,
   formatEur,
   formatStunden,
-  isShiftComplete,
 } from '../lib/calc';
 import { firstName } from '../lib/types';
 import type { Kassenbewegung, Profile, Schicht } from '../lib/types';
@@ -203,11 +202,11 @@ export function ProtokollEditPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [schicht1?.id, vortag?.ist, s1Form?.kassenstart]);
 
-  // Auto-Carry S1 → S2: wenn S1 komplett, S2.kassenstart auf S1.IST setzen
-  // (im Form-State; wird beim nächsten Save persistiert)
+  // Auto-Carry S1 → S2: sobald S1.IST eingetragen ist, wird S2.kassenstart
+  // auf diesen Wert gesetzt — fortlaufend, auch wenn S1 noch nicht komplett.
+  // Greift nicht, wenn S2.kassenstart manuell ueberschrieben wurde.
   useEffect(() => {
     if (!s1Form || !s2Form) return;
-    if (!schicht1 || !isShiftComplete(schicht1)) return;
     if (s2Form.kassenstart_manuell) return;
     const istVal = strToNum(s1Form.kassenist);
     if (istVal === null) return;
@@ -216,7 +215,7 @@ export function ProtokollEditPage() {
     setS2Dirty(true);
     scheduleSave(2);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [s1Form?.kassenist, s1Form?.mitarbeiter_id, s1Form?.zeit_bis]);
+  }, [s1Form?.kassenist]);
 
   // Refs auf den jeweils aktuellsten Form-State, damit verspätete Save-Timer
   // nicht mit veralteten Closure-Werten arbeiten.
@@ -386,15 +385,18 @@ export function ProtokollEditPage() {
   const stunden2 = calcStunden(s2Form.zeit_von, s2Form.zeit_bis);
 
   const dirty = s1Dirty || s2Dirty;
+  const s2StartNum = strToNum(s2Form.kassenstart);
   const isAutoCarriedS2 =
     !s2Form.kassenstart_manuell &&
-    isShiftComplete(schicht1) &&
     schicht1.kassenist !== null &&
-    String(schicht1.kassenist) === s2Form.kassenstart.replace(',', '.');
+    s2StartNum !== null &&
+    Math.abs(schicht1.kassenist - s2StartNum) < 0.01;
+  const s1StartNum = strToNum(s1Form.kassenstart);
   const isFromVortagS1 =
     !s1Form.kassenstart_manuell &&
     !!vortag &&
-    String(vortag.ist) === s1Form.kassenstart.replace(',', '.');
+    s1StartNum !== null &&
+    Math.abs(vortag.ist - s1StartNum) < 0.01;
 
   // Diskrepanz-Erkennung: heutiger S1-Kassenstart weicht von Vortags-IST ab.
   const startNum = strToNum(s1Form.kassenstart);
