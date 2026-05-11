@@ -145,14 +145,12 @@ export function DokuReminderModal({ logoutMode = false, onCancel, onDone }: Prop
                 Ja, dokumentieren
               </button>
             </div>
-            <button
-              type="button"
-              onClick={onCancel}
-              disabled={busy}
-              className="text-xs text-muted hover:text-accent w-full text-center"
+            <div
+              className="text-[11px] text-muted text-center mt-1"
+              style={{ opacity: 0.7 }}
             >
-              Abbrechen (zurück zum Protokoll)
-            </button>
+              Pflicht-Abfrage — bitte eine der beiden Antworten wählen.
+            </div>
           </>
         )}
 

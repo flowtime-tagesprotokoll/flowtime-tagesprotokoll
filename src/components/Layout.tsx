@@ -73,8 +73,18 @@ export function Layout({ children, rightSlot }: LayoutProps) {
               <button
                 type="button"
                 onClick={startSignOut}
-                className="btn-ghost text-xs px-3 py-1.5"
+                className={
+                  session.kind === 'mitarbeiter'
+                    ? 'rounded-lg bg-minus/20 border border-minus/70 text-minus hover:bg-minus/30 hover:border-minus font-bold text-xs px-3 py-1.5 transition-colors flex items-center gap-1.5'
+                    : 'btn-ghost text-xs px-3 py-1.5'
+                }
+                title={
+                  session.kind === 'mitarbeiter'
+                    ? 'Vor Verlassen: Abmelden + Doku-Abfrage bestätigen — sonst fehlt der Eintrag im Bericht!'
+                    : undefined
+                }
               >
+                {session.kind === 'mitarbeiter' && <span>🚪</span>}
                 Abmelden
               </button>
             </>
@@ -83,6 +93,24 @@ export function Layout({ children, rightSlot }: LayoutProps) {
       </header>
 
       <main className="flex-1">{children}</main>
+
+      {session?.kind === 'mitarbeiter' && (
+        <div
+          className="px-6 py-2 text-xs text-center flex items-center justify-center gap-2"
+          style={{
+            background: 'rgba(248,113,113,0.10)',
+            borderTop: '1px solid rgba(248,113,113,0.35)',
+            color: '#fca5a5',
+          }}
+        >
+          <span>🚪</span>
+          <span>
+            <strong>Vor dem Verlassen:</strong> oben rechts auf{' '}
+            <strong className="text-minus">Abmelden</strong> klicken und die
+            Doku-Abfrage bestätigen — sonst fehlt der Eintrag im Bericht.
+          </span>
+        </div>
+      )}
 
       <footer className="border-t border-border-soft px-6 py-3 text-xs text-muted-2 text-center">
         Flowtime GmbH · Hannover

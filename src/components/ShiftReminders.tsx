@@ -168,6 +168,32 @@ export function buildReminders(name: string): Reminder[] {
       ),
     },
     {
+      emoji: '🚪',
+      accent: '#f87171',
+      title: 'Abmelden nicht vergessen!',
+      body: (
+        <>
+          <p className="text-lg leading-relaxed">
+            <strong>{name}</strong>, wenn deine Schicht zu Ende geht: bitte
+            unbedingt <strong>oben rechts auf „Abmelden"</strong> klicken.
+          </p>
+          <p className="text-base text-muted mt-2">
+            Beim Abmelden kommt eine kurze Abfrage:{' '}
+            <em>„Gab's heute einen Vorfall?"</em> → entweder{' '}
+            <strong className="text-plus">„Nein, alles ok"</strong> oder{' '}
+            <strong className="text-warn">„Ja, dokumentieren"</strong>{' '}
+            klicken. Ohne diese Bestätigung fehlt der Eintrag im offiziellen
+            Bericht ans Ministerium.
+          </p>
+          <p className="text-sm text-muted mt-2">
+            Wenn du einfach nur das Fenster schließt oder weggehst, gilt das
+            als „nicht bestätigt". Bitte immer durch die Abfrage klicken — auch
+            wenn nichts passiert ist. Danke! 🙏
+          </p>
+        </>
+      ),
+    },
+    {
       emoji: '👕',
       accent: '#fb923c',
       title: 'Style-Check',
