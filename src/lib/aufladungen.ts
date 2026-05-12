@@ -41,7 +41,9 @@ export const STARTSALDO_PER_SHOP: Record<string, ShopStartsaldo> = {
     stichtag: '2026-05-12',
     saldo: {
       Baha: 50,
-      Recai: 100,
+      // Recai bewusst NICHT im Altbestand: die heutige 100€-Aufladung
+      // (12.05 entnahme) wird ab Stichtag bereits gezaehlt; ein Altbestand
+      // wuerde sie verdoppeln.
       Volkan: 40,
       Cemal: 100,
       Uwe: 7,
