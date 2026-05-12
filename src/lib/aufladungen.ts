@@ -112,11 +112,12 @@ function lev(a: string, b: string): number {
   return dp[a.length][b.length];
 }
 
-/** Maximale Tippfehler-Toleranz je nach Wortlaenge. Knapp halten. */
+/** Maximale Tippfehler-Toleranz je nach Wortlaenge. Sehr knapp halten,
+ *  damit false positives wie "Vulkan" -> "Volkan" nicht passieren. */
 function maxLev(len: number): number {
-  if (len <= 4) return 1;
-  if (len <= 7) return 1;
-  return 2;
+  if (len <= 4) return 0; // sehr kurze Namen wie Uwe, Baha: exakt
+  if (len <= 6) return 1; // bis 6 Zeichen: 1 Tippfehler
+  return 2;               // laenger: 2 Tippfehler erlaubt
 }
 
 /**
@@ -124,9 +125,14 @@ function maxLev(len: number): number {
  * (Mitarbeiter, interne Bezeichnungen).
  */
 const STOPWORDS = new Set([
+  // Mitarbeiter-Namen (aktuell und ehemalig)
   'tamer', 'soner', 'mehdi', 'oskar', 'erdem', 'vedat', 'riadh', 'elhadji', 'mamadou',
+  // Interne Bezeichnungen
   'schublade', 'schuplade', 'kleingeld', 'wechselgeld', 'kg', 'wechsel',
   'einlage', 'entnahme', 'tagessaldo', 'kasse', 'pfand', 'loft', 'shop', 'umtausch',
+  // Aehnliche Woerter, die mit Kunden kollidieren koennten
+  'vulkan', // -> Volkan
+  'oase',   // -> ? (sicherheitshalber)
 ]);
 
 /**
@@ -144,8 +150,11 @@ const STOPWORDS = new Set([
 export function matchKunde(beschreibung: string | null | undefined): string | null {
   if (!beschreibung) return null;
   const norm = normalize(beschreibung);
+  // Auf Buchstaben-Grenzen splitten (auch an Ziffer/Buchstabe-Uebergaengen),
+  // damit Eingaben wie "Uwe50" oder "Nezir100" sauber als Name+Betrag zerlegt
+  // werden und nicht durch die angehaengte Zahl unleserlich werden.
   const tokens = norm
-    .split(/[^a-z0-9]+/)
+    .split(/[^a-z]+/) // alles, was keine ASCII-Buchstabe ist, trennt
     .filter((t) => t.length >= 3 && !STOPWORDS.has(t));
   if (tokens.length === 0) return null;
 

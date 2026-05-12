@@ -64,15 +64,19 @@ function numToStr(n: number | null | undefined): string {
  * stillschweigend zu leer werden darf.
  */
 function strToNum(s: string): number | null {
-  const trimmed = s.trim();
-  if (trimmed === '') return null;
-  // Negatives Vorzeichen akzeptieren
-  let str = trimmed;
-  // Wenn ein Komma vorhanden ist, sind Punkte Tausender-Trenner -> entfernen
+  let str = s.trim();
+  if (str === '') return null;
+  // Euro-Zeichen und Whitespace tolerant entfernen (z.B. Copy aus Excel)
+  str = str.replace(/[€ \s]/g, '');
+  // Wenn ein Komma vorhanden ist: Punkte sind Tausender-Trenner.
   if (str.includes(',')) {
     str = str.replace(/\./g, '').replace(',', '.');
+  } else if (/^-?\d{1,3}(\.\d{3})+$/.test(str)) {
+    // Deutsche Tausender-Schreibweise ohne Dezimal: '1.234' oder '1.234.567'
+    // wird zu 1234 bzw. 1234567.
+    str = str.replace(/\./g, '');
   }
-  // Nur erlaubte Zeichen: Ziffern, Punkt, Minus am Anfang
+  // Ansonsten: Punkt als Dezimal akzeptieren (englische Eingabe, '12.34').
   if (!/^-?\d+(\.\d+)?$/.test(str)) return null;
   const n = parseFloat(str);
   return Number.isFinite(n) ? n : null;

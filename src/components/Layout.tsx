@@ -6,6 +6,7 @@ import { firstName } from '../lib/types';
 import { DokuReminderModal } from './DokuReminder';
 import { ShiftReminders } from './ShiftReminders';
 import { OnlineIndicator } from './OnlineIndicator';
+import { IdleLock } from './IdleLock';
 
 interface LayoutProps {
   children: ReactNode;
@@ -132,6 +133,7 @@ export function Layout({ children, rightSlot }: LayoutProps) {
       )}
 
       <ShiftReminders />
+      <IdleLock />
     </div>
   );
 }

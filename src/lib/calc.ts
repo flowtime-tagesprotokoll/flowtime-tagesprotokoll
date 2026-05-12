@@ -8,15 +8,19 @@ import type { Schicht, Kassenbewegung } from './types';
 export const DIFF_WARN_THRESHOLD = 5.0;
 
 /**
- * Akzeptiert "12,34", "12.34", "1.234,56" (deutsche Tausender) oder Number.
+ * Akzeptiert "12,34", "12.34", "1.234,56" (deutsche Tausender mit Dezimal),
+ * "1.234" (deutsche Tausender ohne Dezimal) oder Number.
  * Leer/ungueltig -> 0.
  */
 function num(v: string | number | null | undefined): number {
   if (v === null || v === undefined || v === '') return 0;
   if (typeof v === 'number') return Number.isFinite(v) ? v : 0;
-  let s = v.trim();
-  // Wenn Komma vorhanden, sind Punkte Tausender-Trenner
-  if (s.includes(',')) s = s.replace(/\./g, '').replace(',', '.');
+  let s = v.trim().replace(/[€ \s]/g, '');
+  if (s.includes(',')) {
+    s = s.replace(/\./g, '').replace(',', '.');
+  } else if (/^-?\d{1,3}(\.\d{3})+$/.test(s)) {
+    s = s.replace(/\./g, '');
+  }
   const n = parseFloat(s);
   return Number.isFinite(n) ? n : 0;
 }

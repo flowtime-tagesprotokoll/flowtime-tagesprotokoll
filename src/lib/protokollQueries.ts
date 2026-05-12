@@ -195,63 +195,66 @@ interface ReplaceBewegungenArgs {
   bewegungen: { typ: 'einlage' | 'entnahme'; beschreibung: string; betrag: number; reihenfolge: number }[];
 }
 
+/**
+ * Fallback fuer das Ersetzen aller Bewegungen, wenn die RPC-Funktion
+ * replace_kassenbewegungen noch nicht in der DB existiert. Insert-first,
+ * dann Delete der alten — minimiert Datenverlust, aber nicht race-sicher.
+ */
+async function replaceBewegungenFallback(
+  schichtId: string,
+  bewegungen: ReplaceBewegungenArgs['bewegungen'],
+): Promise<void> {
+  if (bewegungen.length === 0) {
+    const { error } = await supabase
+      .from('kassenbewegungen')
+      .delete()
+      .eq('schicht_id', schichtId);
+    if (error) throw error;
+    return;
+  }
+  const { data: alteRows, error: selErr } = await supabase
+    .from('kassenbewegungen')
+    .select('id')
+    .eq('schicht_id', schichtId);
+  if (selErr) throw selErr;
+  const alteIds = (alteRows ?? []).map((r) => r.id);
+  const offset = 100000;
+  const rows = bewegungen.map((b, i) => ({
+    ...b,
+    schicht_id: schichtId,
+    reihenfolge: offset + i,
+  }));
+  const { error: insErr } = await supabase.from('kassenbewegungen').insert(rows);
+  if (insErr) throw insErr;
+  if (alteIds.length > 0) {
+    const { error: delErr } = await supabase
+      .from('kassenbewegungen')
+      .delete()
+      .in('id', alteIds);
+    if (delErr) throw delErr;
+  }
+}
+
 export function useReplaceBewegungen() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async ({ schichtId, bewegungen }: ReplaceBewegungenArgs) => {
-      // Wenn neu eingefuegt werden soll, ZUERST insert versuchen mit
-      // temporaeren reihenfolge-Werten weit ueber jeden bestehenden Eintrag,
-      // damit kein Constraint-Konflikt entsteht. Wenn das erfolgreich war,
-      // alte Eintraege loeschen. So ist im Fehlerfall im schlimmsten Fall
-      // ein Duplikat in der DB (sichtbar, korrigierbar), aber NIE leere Bewegungen.
-      if (bewegungen.length === 0) {
-        const { error: delErr } = await supabase
-          .from('kassenbewegungen')
-          .delete()
-          .eq('schicht_id', schichtId);
-        if (delErr) throw delErr;
-        return;
-      }
-      // Vorhandene IDs lesen, damit wir nur die ALTEN nachher loeschen
-      const { data: alteRows, error: selErr } = await supabase
-        .from('kassenbewegungen')
-        .select('id')
-        .eq('schicht_id', schichtId);
-      if (selErr) throw selErr;
-      const alteIds = (alteRows ?? []).map((r) => r.id);
-      // Neue mit hohen reihenfolge-Offsets einfuegen, damit (schicht_id, reihenfolge)
-      // (falls jemals Unique) nicht kollidiert
-      const offset = 100000;
-      const rows = bewegungen.map((b, i) => ({
-        ...b,
-        schicht_id: schichtId,
-        reihenfolge: offset + i,
-      }));
-      const { data: insRows, error: insErr } = await supabase
-        .from('kassenbewegungen')
-        .insert(rows)
-        .select('id');
-      if (insErr) throw insErr;
-      // Jetzt alte loeschen
-      if (alteIds.length > 0) {
-        const { error: delErr } = await supabase
-          .from('kassenbewegungen')
-          .delete()
-          .in('id', alteIds);
-        if (delErr) throw delErr;
-      }
-      // Reihenfolge auf 0..n-1 normalisieren
-      if (insRows && insRows.length > 0) {
-        for (let i = 0; i < insRows.length; i++) {
-          const { error: updErr } = await supabase
-            .from('kassenbewegungen')
-            .update({ reihenfolge: i })
-            .eq('id', insRows[i].id);
-          if (updErr) {
-            // nicht-kritisch — Reihenfolge nur kosmetisch
-            console.warn('reihenfolge normalize failed:', updErr);
-          }
+      // Atomar via RPC (Postgres-Transaktion). Vorher wurde delete + insert
+      // separat ausgefuehrt und konnte bei Race oder Verbindungsabbruch
+      // Duplikate oder Datenverlust verursachen.
+      const { error } = await supabase.rpc('replace_kassenbewegungen', {
+        _schicht_id: schichtId,
+        _bewegungen: bewegungen,
+      });
+      if (error) {
+        // Falls die Migration 0008 noch nicht angewendet ist
+        // (function not found), fallback auf das alte Verfahren.
+        const code = (error as { code?: string }).code;
+        if (code === '42883' || code === 'PGRST202') {
+          await replaceBewegungenFallback(schichtId, bewegungen);
+          return;
         }
+        throw error;
       }
     },
     onSuccess: (_, vars) => {
