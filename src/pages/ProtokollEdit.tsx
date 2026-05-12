@@ -500,15 +500,15 @@ export function ProtokollEditPage() {
 
         {offeneAufladungen.length > 0 && (
           <div
-            className="text-[11px] mono px-3 py-1.5 rounded flex flex-wrap items-center gap-x-3 gap-y-1"
+            className="text-[10px] mono px-2.5 py-1 rounded flex flex-wrap items-center gap-x-2.5 gap-y-0.5"
             style={{
               background: 'rgba(167,139,250,0.08)',
               border: '1px solid rgba(167,139,250,0.30)',
               color: '#c4b5fd',
             }}
-            title="Kunden mit offener Kartenaufladung — werden automatisch verrechnet, sobald sie in Einlagen erscheinen"
+            title="Offene Posten — werden automatisch verrechnet, sobald der Kunde in Einlagen erscheint"
           >
-            <span style={{ color: '#a78bfa' }}>💳 Offene Aufladungen:</span>
+            <span style={{ color: '#a78bfa' }}>💳 Offene:</span>
             {offeneAufladungen.map((a, i) => (
               <span key={a.kunde}>
                 <strong>{a.kunde}</strong>{' '}
