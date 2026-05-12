@@ -4,11 +4,11 @@ import { Layout } from '../components/Layout';
 import { useProfiles, useShops } from '../lib/queries';
 import { useProtokollListe } from '../lib/protokollQueries';
 import { useAuth } from '../lib/authStore';
-import { formatEur } from '../lib/calc';
+import { formatEur, heuteBerlinISO } from '../lib/calc';
 import { firstName } from '../lib/types';
 
 function todayISO(): string {
-  return new Date().toISOString().slice(0, 10);
+  return heuteBerlinISO();
 }
 
 function fmtDate(iso: string): string {

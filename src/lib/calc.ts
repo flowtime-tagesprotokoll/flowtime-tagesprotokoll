@@ -7,12 +7,17 @@ import type { Schicht, Kassenbewegung } from './types';
 
 export const DIFF_WARN_THRESHOLD = 5.0;
 
-/** Akzeptiert "12,34" oder "12.34" oder Number; leer/ungültig → 0. */
+/**
+ * Akzeptiert "12,34", "12.34", "1.234,56" (deutsche Tausender) oder Number.
+ * Leer/ungueltig -> 0.
+ */
 function num(v: string | number | null | undefined): number {
   if (v === null || v === undefined || v === '') return 0;
   if (typeof v === 'number') return Number.isFinite(v) ? v : 0;
-  const cleaned = v.replace(',', '.');
-  const n = parseFloat(cleaned);
+  let s = v.trim();
+  // Wenn Komma vorhanden, sind Punkte Tausender-Trenner
+  if (s.includes(',')) s = s.replace(/\./g, '').replace(',', '.');
+  const n = parseFloat(s);
   return Number.isFinite(n) ? n : 0;
 }
 
@@ -38,6 +43,21 @@ export function calcStunden(
 
 export function formatStunden(h: number): string {
   return h.toFixed(2).replace('.', ',') + ' h';
+}
+
+/**
+ * Heutiges Datum in Berlin-Zeit als ISO yyyy-MM-dd.
+ * Vermeidet den Bug, dass UTC-toISOString() zwischen 22/23-24 Uhr
+ * (Berlin-Sommerzeit) bereits das Datum 'morgen' bzw. 'gestern' liefert.
+ */
+export function heuteBerlinISO(): string {
+  // 'sv-SE' liefert das ISO-Format ohne Reformatierung
+  return new Intl.DateTimeFormat('sv-SE', {
+    timeZone: 'Europe/Berlin',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(new Date());
 }
 
 export function formatEur(n: number | null | undefined): string {

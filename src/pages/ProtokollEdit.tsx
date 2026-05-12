@@ -20,6 +20,7 @@ import {
   diffIsWarn,
   formatEur,
   formatStunden,
+  heuteBerlinISO,
 } from '../lib/calc';
 import { STARTSALDO_PER_SHOP, berechneOffeneAufladungen } from '../lib/aufladungen';
 import { firstName } from '../lib/types';
@@ -51,9 +52,29 @@ function numToStr(n: number | null | undefined): string {
   return n === null || n === undefined ? '' : String(n).replace('.', ',');
 }
 
+/**
+ * Robustes Parsen von Geldbetraegen.
+ * - Deutsch: "1.234,56" -> 1234.56 (Punkte sind Tausender-Trenner)
+ * - Englisch/Mix: "1234.56" -> 1234.56 (Punkt als Dezimal-Trenner, wenn KEIN Komma)
+ * - Whitespace/leerer String -> null
+ * - Nicht-numerisches (z.B. "abc500x") -> null (caller muss validieren!)
+ *
+ * WICHTIG: Caller-Code muss selbst pruefen, ob der String non-empty UND
+ * das Parse-Ergebnis null ist - dann liegt ein Tippfehler vor, der NICHT
+ * stillschweigend zu leer werden darf.
+ */
 function strToNum(s: string): number | null {
-  if (s.trim() === '') return null;
-  const n = parseFloat(s.replace(',', '.'));
+  const trimmed = s.trim();
+  if (trimmed === '') return null;
+  // Negatives Vorzeichen akzeptieren
+  let str = trimmed;
+  // Wenn ein Komma vorhanden ist, sind Punkte Tausender-Trenner -> entfernen
+  if (str.includes(',')) {
+    str = str.replace(/\./g, '').replace(',', '.');
+  }
+  // Nur erlaubte Zeichen: Ziffern, Punkt, Minus am Anfang
+  if (!/^-?\d+(\.\d+)?$/.test(str)) return null;
+  const n = parseFloat(str);
   return Number.isFinite(n) ? n : null;
 }
 
@@ -254,10 +275,22 @@ export function ProtokollEditPage() {
       }
     }, 800);
   }
+  // Refs auf dirty-Flags, damit der beforeunload-Handler immer den
+  // aktuellsten Zustand sieht (nicht den Closure-Zustand bei mount).
+  const dirtyRef = useRef(false);
+  dirtyRef.current = s1Dirty || s2Dirty || pendingSaves.current.size > 0;
+
   // Beim Unmount oder Tab-Schliessen: pending Saves sofort feuern,
-  // damit Eintraege im 800ms-Debounce-Fenster nicht verloren gehen.
+  // PLUS Browser-Warnung anzeigen wenn Aenderungen noch ungespeichert sind.
   useEffect(() => {
-    const handleUnload = () => flushPending();
+    const handleUnload = (e: BeforeUnloadEvent) => {
+      flushPending();
+      if (dirtyRef.current) {
+        // Browser zeigt seinen eigenen Dialog "Wollen Sie die Seite verlassen?"
+        e.preventDefault();
+        e.returnValue = '';
+      }
+    };
     window.addEventListener('beforeunload', handleUnload);
     return () => {
       window.removeEventListener('beforeunload', handleUnload);
@@ -273,11 +306,12 @@ export function ProtokollEditPage() {
     setSaveErr(null);
     try {
       const kassenstartNum = strToNum(form.kassenstart);
-      const kassenstartManuell =
-        form.kassenstart_manuell ||
-        (kassenstartNum !== null &&
-          schicht.kassenstart !== null &&
-          kassenstartNum !== schicht.kassenstart);
+      // 'manuell' kommt AUSSCHLIESSLICH aus dem Form-State (Auto-Carry &
+      // Vortags-Carry setzen es explizit auf false, manuelle Tastatur-
+      // eingabe ueber patchKassenstartS1/2 setzt es auf true). Keine
+      // Heuristik mehr - die hat falsche 'manuell=true' produziert sobald
+      // Auto-Carry einen Wert geaendert hat.
+      const kassenstartManuell = form.kassenstart_manuell;
       await updateSchicht.mutateAsync({
         shopId,
         datum,
@@ -492,7 +526,7 @@ export function ProtokollEditPage() {
           </div>
         )}
 
-        {isAdmin && datum !== new Date().toISOString().slice(0, 10) && (
+        {isAdmin && datum !== heuteBerlinISO() && (
           <div className="bg-warn/10 border border-warn/30 text-warn rounded p-2 text-xs mono">
             ⚠ Admin-Bearbeitung — dies ist nicht das heutige Datum.
           </div>

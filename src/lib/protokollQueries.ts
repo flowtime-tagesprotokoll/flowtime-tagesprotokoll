@@ -91,8 +91,24 @@ export function useEnsureProtokoll() {
           })
           .select('id')
           .single();
-        if (error) throw error;
-        protokollId = created.id;
+        if (error) {
+          // 23505 = unique_violation: ein zweites Geraet hat in der Zwischenzeit
+          // dasselbe Protokoll angelegt. Re-Select und weiter, kein Fehler werfen.
+          if ((error as { code?: string }).code === '23505') {
+            const { data: again } = await supabase
+              .from('protokolle')
+              .select('id')
+              .eq('shop_id', shopId)
+              .eq('datum', datum)
+              .single();
+            if (!again) throw error;
+            protokollId = again.id;
+          } else {
+            throw error;
+          }
+        } else {
+          protokollId = created.id;
+        }
       }
 
       // Beide Schichten sicherstellen (idempotent via upsert auf unique key)
@@ -183,15 +199,60 @@ export function useReplaceBewegungen() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async ({ schichtId, bewegungen }: ReplaceBewegungenArgs) => {
-      const { error: delErr } = await supabase
+      // Wenn neu eingefuegt werden soll, ZUERST insert versuchen mit
+      // temporaeren reihenfolge-Werten weit ueber jeden bestehenden Eintrag,
+      // damit kein Constraint-Konflikt entsteht. Wenn das erfolgreich war,
+      // alte Eintraege loeschen. So ist im Fehlerfall im schlimmsten Fall
+      // ein Duplikat in der DB (sichtbar, korrigierbar), aber NIE leere Bewegungen.
+      if (bewegungen.length === 0) {
+        const { error: delErr } = await supabase
+          .from('kassenbewegungen')
+          .delete()
+          .eq('schicht_id', schichtId);
+        if (delErr) throw delErr;
+        return;
+      }
+      // Vorhandene IDs lesen, damit wir nur die ALTEN nachher loeschen
+      const { data: alteRows, error: selErr } = await supabase
         .from('kassenbewegungen')
-        .delete()
+        .select('id')
         .eq('schicht_id', schichtId);
-      if (delErr) throw delErr;
-      if (bewegungen.length === 0) return;
-      const rows = bewegungen.map((b) => ({ ...b, schicht_id: schichtId }));
-      const { error: insErr } = await supabase.from('kassenbewegungen').insert(rows);
+      if (selErr) throw selErr;
+      const alteIds = (alteRows ?? []).map((r) => r.id);
+      // Neue mit hohen reihenfolge-Offsets einfuegen, damit (schicht_id, reihenfolge)
+      // (falls jemals Unique) nicht kollidiert
+      const offset = 100000;
+      const rows = bewegungen.map((b, i) => ({
+        ...b,
+        schicht_id: schichtId,
+        reihenfolge: offset + i,
+      }));
+      const { data: insRows, error: insErr } = await supabase
+        .from('kassenbewegungen')
+        .insert(rows)
+        .select('id');
       if (insErr) throw insErr;
+      // Jetzt alte loeschen
+      if (alteIds.length > 0) {
+        const { error: delErr } = await supabase
+          .from('kassenbewegungen')
+          .delete()
+          .in('id', alteIds);
+        if (delErr) throw delErr;
+      }
+      // Reihenfolge auf 0..n-1 normalisieren
+      if (insRows && insRows.length > 0) {
+        for (let i = 0; i < insRows.length; i++) {
+          const { error: updErr } = await supabase
+            .from('kassenbewegungen')
+            .update({ reihenfolge: i })
+            .eq('id', insRows[i].id);
+          if (updErr) {
+            // nicht-kritisch — Reihenfolge nur kosmetisch
+            console.warn('reihenfolge normalize failed:', updErr);
+          }
+        }
+      }
     },
     onSuccess: (_, vars) => {
       qc.invalidateQueries({ queryKey: protokollKey(vars.shopId, vars.datum) });
@@ -321,7 +382,11 @@ export function useVortagKasse(shopId: string, datum: string) {
         const sorted = [...list].sort((a, b) => b.schicht_nr - a.schicht_nr);
         const hit = sorted.find((s) => s.kassenist !== null && s.kassenist !== undefined);
         if (hit) {
-          return { datum: p.datum, ist: Number(hit.kassenist) };
+          // Postgres-numeric kommt als string oder number; defensiv parsen
+          const raw = String(hit.kassenist).trim().replace(',', '.');
+          const ist = parseFloat(raw);
+          if (!Number.isFinite(ist)) continue;
+          return { datum: p.datum, ist };
         }
       }
       return null;

@@ -112,38 +112,65 @@ function lev(a: string, b: string): number {
   return dp[a.length][b.length];
 }
 
-/** Maximale Tippfehler-Toleranz je nach Wortlaenge. */
+/** Maximale Tippfehler-Toleranz je nach Wortlaenge. Knapp halten. */
 function maxLev(len: number): number {
   if (len <= 4) return 1;
-  if (len <= 7) return 2;
+  if (len <= 7) return 1;
   return 2;
 }
 
 /**
+ * Stoppwoerter, die NICHT als Kundennamen interpretiert werden duerfen
+ * (Mitarbeiter, interne Bezeichnungen).
+ */
+const STOPWORDS = new Set([
+  'tamer', 'soner', 'mehdi', 'oskar', 'erdem', 'vedat', 'riadh', 'elhadji', 'mamadou',
+  'schublade', 'schuplade', 'kleingeld', 'wechselgeld', 'kg', 'wechsel',
+  'einlage', 'entnahme', 'tagessaldo', 'kasse', 'pfand', 'loft', 'shop', 'umtausch',
+]);
+
+/**
  * Versucht aus einer Bewegungs-Beschreibung den dahinterstehenden Kunden
  * zu finden. Gibt den kanonischen Namen zurueck oder null.
+ *
+ * Vorgehen:
+ *  1. Tokens aus der Beschreibung extrahieren (mind. 3 Zeichen).
+ *  2. Stoppwoerter rausfiltern.
+ *  3. Pro Token den BESTEN Kunden-Match suchen (kleinste Levenshtein-Distanz).
+ *  4. Nur wenn die Distanz die fuer das Wort erlaubte Toleranz unterschreitet,
+ *     wird der Match akzeptiert.
+ *  5. Bei mehreren Tokens gewinnt der beste Gesamt-Match.
  */
 export function matchKunde(beschreibung: string | null | undefined): string | null {
   if (!beschreibung) return null;
   const norm = normalize(beschreibung);
-  // Worte extrahieren (einfach: alles was nicht alphanumerisch ist ignorieren)
-  const tokens = norm.split(/[^a-z0-9]+/).filter((t) => t.length >= 3);
+  const tokens = norm
+    .split(/[^a-z0-9]+/)
+    .filter((t) => t.length >= 3 && !STOPWORDS.has(t));
   if (tokens.length === 0) return null;
+
+  let bestKunde: string | null = null;
+  let bestDist = Infinity;
 
   for (const tok of tokens) {
     for (const kunde of KUNDEN) {
       const candidates = [kunde.canonical, ...kunde.aliases].map(normalize);
       for (const cand of candidates) {
-        // Exakt enthalten ODER kurze Levenshtein-Distanz
-        if (tok === cand) return kunde.canonical;
-        if (tok.includes(cand) || cand.includes(tok)) return kunde.canonical;
-        if (lev(tok, cand) <= maxLev(Math.max(tok.length, cand.length))) {
-          return kunde.canonical;
+        let dist: number;
+        if (tok === cand) dist = 0;
+        else dist = lev(tok, cand);
+        // Substring-Match nur erlauben, wenn das laengere Wort lang genug ist,
+        // damit "Petromax" nicht versehentlich "Petro" matcht.
+        const allowedDist = maxLev(Math.min(tok.length, cand.length));
+        if (dist <= allowedDist && dist < bestDist) {
+          bestDist = dist;
+          bestKunde = kunde.canonical;
+          if (dist === 0) return kunde.canonical;
         }
       }
     }
   }
-  return null;
+  return bestKunde;
 }
 
 interface BewegungLite {
