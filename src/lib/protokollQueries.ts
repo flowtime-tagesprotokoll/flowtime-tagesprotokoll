@@ -109,6 +109,14 @@ export function useEnsureProtokoll() {
     },
     onSuccess: (_, vars) => {
       qc.invalidateQueries({ queryKey: protokollKey(vars.shopId, vars.datum) });
+      // Auch alle Vortags-Queries dieses Shops invalidieren, damit Folge-Tage
+      // den neuen Stand sehen, sobald hier ein IST eingetragen wird.
+      qc.invalidateQueries({
+        predicate: (q) =>
+          Array.isArray(q.queryKey) &&
+          q.queryKey[0] === 'vortag' &&
+          q.queryKey[1] === vars.shopId,
+      });
     },
   });
 }
@@ -132,6 +140,14 @@ export function useUpdateSchicht() {
     },
     onSuccess: (_, vars) => {
       qc.invalidateQueries({ queryKey: protokollKey(vars.shopId, vars.datum) });
+      // Wenn der IST aktualisiert wurde, muessen alle Vortags-Queries des
+      // Shops neu auswerten, damit Folgetage die neue Zahl sehen.
+      qc.invalidateQueries({
+        predicate: (q) =>
+          Array.isArray(q.queryKey) &&
+          q.queryKey[0] === 'vortag' &&
+          q.queryKey[1] === vars.shopId,
+      });
     },
   });
 }
