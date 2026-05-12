@@ -25,6 +25,7 @@ import {
 import { STARTSALDO_PER_SHOP, berechneOffeneAufladungen } from '../lib/aufladungen';
 import { firstName } from '../lib/types';
 import type { Kassenbewegung, Profile, Schicht } from '../lib/types';
+import { LiveClock } from '../components/LiveClock';
 
 interface BewegungZeile {
   beschreibung: string;
@@ -513,7 +514,11 @@ export function ProtokollEditPage() {
             <h1 className="text-xl sm:text-2xl font-bold leading-tight">
               {shop.name}
             </h1>
-            <div className="text-sm text-muted mono">{datum}</div>
+            <div className="text-sm text-muted mono flex items-center gap-2">
+              <span>{datum}</span>
+              <span className="text-muted-2">·</span>
+              <LiveClock />
+            </div>
           </div>
           <div className="text-right text-xs mono pt-1">
             {dirty ? (
