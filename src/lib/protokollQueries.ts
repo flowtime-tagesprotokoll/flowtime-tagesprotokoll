@@ -195,6 +195,48 @@ export function useReplaceBewegungen() {
     },
     onSuccess: (_, vars) => {
       qc.invalidateQueries({ queryKey: protokollKey(vars.shopId, vars.datum) });
+      // Aufladungs-Saldo des Shops kann sich geaendert haben.
+      qc.invalidateQueries({
+        predicate: (q) =>
+          Array.isArray(q.queryKey) &&
+          q.queryKey[0] === 'aufladungen' &&
+          q.queryKey[1] === vars.shopId,
+      });
+    },
+  });
+}
+
+/**
+ * Holt alle Kassenbewegungen eines Shops der letzten N Tage, fuer die
+ * Aufladungs-Saldo-Berechnung.
+ */
+export function useAufladungBewegungen(shopId: string, dayCount = 180) {
+  return useQuery({
+    queryKey: ['aufladungen', shopId, dayCount],
+    queryFn: async () => {
+      const cutoff = new Date();
+      cutoff.setDate(cutoff.getDate() - dayCount);
+      const cutoffIso = cutoff.toISOString().slice(0, 10);
+      const { data, error } = await supabase
+        .from('protokolle')
+        .select('datum, schichten(kassenbewegungen(typ, beschreibung, betrag))')
+        .eq('shop_id', shopId)
+        .gte('datum', cutoffIso)
+        .order('datum', { ascending: true });
+      if (error) throw error;
+      const out: { typ: 'einlage' | 'entnahme'; beschreibung: string | null; betrag: number; datum: string }[] = [];
+      for (const p of data ?? []) {
+        const datum = (p as { datum: string }).datum;
+        const schichten = ((p as { schichten?: unknown }).schichten ?? []) as Array<{
+          kassenbewegungen?: Array<{ typ: 'einlage' | 'entnahme'; beschreibung: string | null; betrag: number }>;
+        }>;
+        for (const s of schichten) {
+          for (const b of s.kassenbewegungen ?? []) {
+            out.push({ typ: b.typ, beschreibung: b.beschreibung, betrag: Number(b.betrag), datum });
+          }
+        }
+      }
+      return out;
     },
   });
 }

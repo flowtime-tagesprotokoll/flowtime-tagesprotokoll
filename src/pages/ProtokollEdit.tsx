@@ -7,6 +7,7 @@ import { useProfiles, useShops } from '../lib/queries';
 import {
   useDeleteProtokoll,
   useEnsureProtokoll,
+  useAufladungBewegungen,
   useProtokoll,
   useReplaceBewegungen,
   useUpdateSchicht,
@@ -20,6 +21,7 @@ import {
   formatEur,
   formatStunden,
 } from '../lib/calc';
+import { berechneOffeneAufladungen } from '../lib/aufladungen';
 import { firstName } from '../lib/types';
 import type { Kassenbewegung, Profile, Schicht } from '../lib/types';
 
@@ -128,6 +130,7 @@ export function ProtokollEditPage() {
   const ensure = useEnsureProtokoll();
   const { data: full, isLoading, error: protoErr } = useProtokoll(shopId, datum);
   const { data: vortag } = useVortagKasse(shopId, datum);
+  const { data: aufladungBewegungen } = useAufladungBewegungen(shopId);
   const updateSchicht = useUpdateSchicht();
   const replaceBewegungen = useReplaceBewegungen();
   const deleteProtokoll = useDeleteProtokoll();
@@ -398,6 +401,30 @@ export function ProtokollEditPage() {
     s1StartNum !== null &&
     Math.abs(vortag.ist - s1StartNum) < 0.01;
 
+  // Offene Aufladungen: nimm alle historischen Bewegungen MINUS heutigen
+  // (die heutigen kommen live aus dem Form-State, damit auch ungespeicherte
+  // Eingaben sofort beruecksichtigt werden).
+  const offeneAufladungen = useMemo(() => {
+    const hist = (aufladungBewegungen ?? []).filter((b) => b.datum !== datum);
+    const heuteForm: typeof hist = [];
+    function pushForm(zeilen: BewegungZeile[], typ: 'einlage' | 'entnahme') {
+      for (const z of zeilen) {
+        const betrag = strToNum(z.betrag);
+        if (betrag === null) continue;
+        heuteForm.push({ typ, beschreibung: z.beschreibung, betrag, datum });
+      }
+    }
+    if (s1Form) {
+      pushForm(s1Form.einlagen, 'einlage');
+      pushForm(s1Form.entnahmen, 'entnahme');
+    }
+    if (s2Form) {
+      pushForm(s2Form.einlagen, 'einlage');
+      pushForm(s2Form.entnahmen, 'entnahme');
+    }
+    return berechneOffeneAufladungen([...hist, ...heuteForm]);
+  }, [aufladungBewegungen, datum, s1Form, s2Form]);
+
   // Diskrepanz-Erkennung: heutiger S1-Kassenstart weicht von Vortags-IST ab.
   const startNum = strToNum(s1Form.kassenstart);
   const vortagDiskrepanz =
@@ -460,6 +487,28 @@ export function ProtokollEditPage() {
         {isAdmin && datum !== new Date().toISOString().slice(0, 10) && (
           <div className="bg-warn/10 border border-warn/30 text-warn rounded p-2 text-xs mono">
             ⚠ Admin-Bearbeitung — dies ist nicht das heutige Datum.
+          </div>
+        )}
+
+        {offeneAufladungen.length > 0 && (
+          <div
+            className="text-[11px] mono px-3 py-1.5 rounded flex flex-wrap items-center gap-x-3 gap-y-1"
+            style={{
+              background: 'rgba(167,139,250,0.08)',
+              border: '1px solid rgba(167,139,250,0.30)',
+              color: '#c4b5fd',
+            }}
+            title="Kunden mit offener Kartenaufladung — werden automatisch verrechnet, sobald sie in Einlagen erscheinen"
+          >
+            <span style={{ color: '#a78bfa' }}>💳 Offene Aufladungen:</span>
+            {offeneAufladungen.map((a, i) => (
+              <span key={a.kunde}>
+                <strong>{a.kunde}</strong>{' '}
+                <span style={{ color: '#a78bfa' }}>{formatEur(a.offen)}</span>
+                <span className="text-muted-2"> (seit {a.seit.slice(8, 10) + '.' + a.seit.slice(5, 7) + '.'})</span>
+                {i < offeneAufladungen.length - 1 && ' ·'}
+              </span>
+            ))}
           </div>
         )}
 
