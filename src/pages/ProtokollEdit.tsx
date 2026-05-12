@@ -21,7 +21,7 @@ import {
   formatEur,
   formatStunden,
 } from '../lib/calc';
-import { berechneOffeneAufladungen } from '../lib/aufladungen';
+import { STARTSALDO_PER_SHOP, berechneOffeneAufladungen } from '../lib/aufladungen';
 import { firstName } from '../lib/types';
 import type { Kassenbewegung, Profile, Schicht } from '../lib/types';
 
@@ -422,8 +422,9 @@ export function ProtokollEditPage() {
       pushForm(s2Form.einlagen, 'einlage');
       pushForm(s2Form.entnahmen, 'entnahme');
     }
-    return berechneOffeneAufladungen([...hist, ...heuteForm]);
-  }, [aufladungBewegungen, datum, s1Form, s2Form]);
+    const startsaldo = shop ? STARTSALDO_PER_SHOP[shop.kurz] ?? {} : {};
+    return berechneOffeneAufladungen([...hist, ...heuteForm], startsaldo);
+  }, [aufladungBewegungen, datum, s1Form, s2Form, shop]);
 
   // Diskrepanz-Erkennung: heutiger S1-Kassenstart weicht von Vortags-IST ab.
   const startNum = strToNum(s1Form.kassenstart);
@@ -505,7 +506,12 @@ export function ProtokollEditPage() {
               <span key={a.kunde}>
                 <strong>{a.kunde}</strong>{' '}
                 <span style={{ color: '#a78bfa' }}>{formatEur(a.offen)}</span>
-                <span className="text-muted-2"> (seit {a.seit.slice(8, 10) + '.' + a.seit.slice(5, 7) + '.'})</span>
+                <span className="text-muted-2">
+                  {' '}
+                  {a.seit === null
+                    ? '(Altbestand)'
+                    : `(seit ${a.seit.slice(8, 10) + '.' + a.seit.slice(5, 7) + '.'})`}
+                </span>
                 {i < offeneAufladungen.length - 1 && ' ·'}
               </span>
             ))}

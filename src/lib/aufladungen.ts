@@ -21,6 +21,29 @@ interface CustomerDef {
 }
 
 /**
+ * Altbestand-Saldo: offene Aufladungen, die VOR der Digitalisierung
+ * angefallen sind (auf Papier-Protokollen vermerkt) und in der DB nicht
+ * als Entnahme erscheinen. Wird zur berechneten Soll-Summe hinzugefuegt;
+ * Einlagen aus der DB verrechnen diese genauso wie digitale Aufladungen.
+ *
+ * Sobald ein Kunde komplett bezahlt hat, kann sein Eintrag hier auf 0
+ * gesetzt werden (oder einfach drin bleiben — wird automatisch nicht mehr
+ * angezeigt, wenn Saldo <= 0).
+ */
+export const STARTSALDO_PER_SHOP: Record<string, Record<string, number>> = {
+  MGR: {
+    Baha: 50,
+    Recai: 100,
+    Volkan: 40,
+    Cemal: 100,
+    Uwe: 7,
+  },
+  STÖ: {
+    // bei Bedarf hier eintragen
+  },
+};
+
+/**
  * Liste aller Kunden, die Aufladungen tätigen duerfen.
  * Pflegt Tamer/Admin direkt hier im Code. Aliases helfen bei haeufigen
  * Tipp-Varianten (Umlaut, fehlende Buchstaben).
@@ -121,32 +144,44 @@ interface BewegungLite {
 export interface OffeneAufladung {
   kunde: string;
   offen: number;
-  seit: string;
-  /** Zaehlt, wie viele Aufladungs-Eintraege diesen Saldo ergeben. */
+  /** ISO-Datum der aeltesten Aufladung, oder null wenn nur Altbestand. */
+  seit: string | null;
+  /** Zaehlt, wie viele Aufladungs-Eintraege diesen Saldo ergeben (ohne Altbestand). */
   anzahlAufladungen: number;
 }
 
 /**
  * Saldiert alle Bewegungen ueber alle Tage hinweg pro Kunde.
  * Entnahme = Aufladung (Kunde schuldet) | Einlage = Tilgung.
- * Rueckgabe: nur Kunden mit offen > 0, sortiert nach aeltestem Datum zuerst.
+ *
+ * Optionaler `startsaldo`-Parameter addiert Altbestand-Schulden.
+ * Rueckgabe: nur Kunden mit offen > 0, sortiert nach aeltestem Datum
+ * (Altbestand zuerst).
  */
-export function berechneOffeneAufladungen(bewegungen: BewegungLite[]): OffeneAufladung[] {
+export function berechneOffeneAufladungen(
+  bewegungen: BewegungLite[],
+  startsaldo: Record<string, number> = {},
+): OffeneAufladung[] {
   interface Acc {
-    soll: number;     // Summe Entnahmen mit diesem Kunden
+    soll: number;     // Summe Entnahmen + Altbestand
     gezahlt: number;  // Summe Einlagen mit diesem Kunden
-    seit: string;     // aeltestes Aufladungs-Datum
-    anzahl: number;   // Anzahl Entnahmen
+    seit: string | null;
+    anzahl: number;
   }
   const map = new Map<string, Acc>();
+  // Startsaldo erst einlesen — Kunden mit Altbestand haben dann "seit: null"
+  for (const [kunde, betrag] of Object.entries(startsaldo)) {
+    if (!Number.isFinite(betrag) || betrag <= 0) continue;
+    map.set(kunde, { soll: betrag, gezahlt: 0, seit: null, anzahl: 0 });
+  }
   for (const b of bewegungen) {
     const kunde = matchKunde(b.beschreibung);
     if (!kunde) continue;
-    const entry = map.get(kunde) ?? { soll: 0, gezahlt: 0, seit: b.datum, anzahl: 0 };
+    const entry = map.get(kunde) ?? { soll: 0, gezahlt: 0, seit: null, anzahl: 0 };
     if (b.typ === 'entnahme') {
       entry.soll += b.betrag;
       entry.anzahl += 1;
-      if (b.datum < entry.seit) entry.seit = b.datum;
+      if (entry.seit === null || b.datum < entry.seit) entry.seit = b.datum;
     } else {
       entry.gezahlt += b.betrag;
     }
@@ -159,7 +194,12 @@ export function berechneOffeneAufladungen(bewegungen: BewegungLite[]): OffeneAuf
       out.push({ kunde, offen, seit: acc.seit, anzahlAufladungen: acc.anzahl });
     }
   }
-  // aelteste zuerst
-  out.sort((a, b) => (a.seit < b.seit ? -1 : a.seit > b.seit ? 1 : 0));
+  // Altbestand zuerst (seit=null), dann aelteste Datums-Aufladungen
+  out.sort((a, b) => {
+    if (a.seit === null && b.seit === null) return 0;
+    if (a.seit === null) return -1;
+    if (b.seit === null) return 1;
+    return a.seit < b.seit ? -1 : a.seit > b.seit ? 1 : 0;
+  });
   return out;
 }
