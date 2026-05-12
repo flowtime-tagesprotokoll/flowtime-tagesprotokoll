@@ -355,6 +355,34 @@ export function ProtokollEditPage() {
     scheduleSave(2);
   }
 
+  // Offene Aufladungen: nimm alle historischen Bewegungen MINUS heutigen
+  // (die heutigen kommen live aus dem Form-State, damit auch ungespeicherte
+  // Eingaben sofort beruecksichtigt werden).
+  // WICHTIG: useMemo MUSS vor jedem Early-Return stehen, sonst aendert sich
+  // die Hook-Reihenfolge zwischen Renders und React faellt komplett aus.
+  const offeneAufladungen = useMemo(() => {
+    const hist = (aufladungBewegungen ?? []).filter((b) => b.datum !== datum);
+    const heuteForm: typeof hist = [];
+    function pushForm(zeilen: BewegungZeile[], typ: 'einlage' | 'entnahme') {
+      for (const z of zeilen) {
+        const betrag = strToNum(z.betrag);
+        if (betrag === null) continue;
+        heuteForm.push({ typ, beschreibung: z.beschreibung, betrag, datum });
+      }
+    }
+    if (s1Form) {
+      pushForm(s1Form.einlagen, 'einlage');
+      pushForm(s1Form.entnahmen, 'entnahme');
+    }
+    if (s2Form) {
+      pushForm(s2Form.einlagen, 'einlage');
+      pushForm(s2Form.entnahmen, 'entnahme');
+    }
+    const shopKurz = shops?.find((s) => s.id === shopId)?.kurz;
+    const startsaldo = shopKurz ? STARTSALDO_PER_SHOP[shopKurz] ?? {} : {};
+    return berechneOffeneAufladungen([...hist, ...heuteForm], startsaldo);
+  }, [aufladungBewegungen, datum, s1Form, s2Form, shops, shopId]);
+
   if (protoErr || ensure.error) {
     const e = (protoErr ?? ensure.error) as Error;
     return (
@@ -400,31 +428,6 @@ export function ProtokollEditPage() {
     !!vortag &&
     s1StartNum !== null &&
     Math.abs(vortag.ist - s1StartNum) < 0.01;
-
-  // Offene Aufladungen: nimm alle historischen Bewegungen MINUS heutigen
-  // (die heutigen kommen live aus dem Form-State, damit auch ungespeicherte
-  // Eingaben sofort beruecksichtigt werden).
-  const offeneAufladungen = useMemo(() => {
-    const hist = (aufladungBewegungen ?? []).filter((b) => b.datum !== datum);
-    const heuteForm: typeof hist = [];
-    function pushForm(zeilen: BewegungZeile[], typ: 'einlage' | 'entnahme') {
-      for (const z of zeilen) {
-        const betrag = strToNum(z.betrag);
-        if (betrag === null) continue;
-        heuteForm.push({ typ, beschreibung: z.beschreibung, betrag, datum });
-      }
-    }
-    if (s1Form) {
-      pushForm(s1Form.einlagen, 'einlage');
-      pushForm(s1Form.entnahmen, 'entnahme');
-    }
-    if (s2Form) {
-      pushForm(s2Form.einlagen, 'einlage');
-      pushForm(s2Form.entnahmen, 'entnahme');
-    }
-    const startsaldo = shop ? STARTSALDO_PER_SHOP[shop.kurz] ?? {} : {};
-    return berechneOffeneAufladungen([...hist, ...heuteForm], startsaldo);
-  }, [aufladungBewegungen, datum, s1Form, s2Form, shop]);
 
   // Diskrepanz-Erkennung: heutiger S1-Kassenstart weicht von Vortags-IST ab.
   const startNum = strToNum(s1Form.kassenstart);
