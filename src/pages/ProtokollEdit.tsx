@@ -379,8 +379,12 @@ export function ProtokollEditPage() {
       pushForm(s2Form.entnahmen, 'entnahme');
     }
     const shopKurz = shops?.find((s) => s.id === shopId)?.kurz;
-    const startsaldo = shopKurz ? STARTSALDO_PER_SHOP[shopKurz] ?? {} : {};
-    return berechneOffeneAufladungen([...hist, ...heuteForm], startsaldo);
+    const cfg = shopKurz ? STARTSALDO_PER_SHOP[shopKurz] : undefined;
+    return berechneOffeneAufladungen(
+      [...hist, ...heuteForm],
+      cfg?.saldo ?? {},
+      cfg?.stichtag,
+    );
   }, [aufladungBewegungen, datum, s1Form, s2Form, shops, shopId]);
 
   if (protoErr || ensure.error) {

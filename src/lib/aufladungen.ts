@@ -21,25 +21,35 @@ interface CustomerDef {
 }
 
 /**
- * Altbestand-Saldo: offene Aufladungen, die VOR der Digitalisierung
- * angefallen sind (auf Papier-Protokollen vermerkt) und in der DB nicht
- * als Entnahme erscheinen. Wird zur berechneten Soll-Summe hinzugefuegt;
- * Einlagen aus der DB verrechnen diese genauso wie digitale Aufladungen.
+ * Altbestand-Saldo PRO SHOP mit Stichtag:
+ *  - `saldo`: Aktuelle offene Stände am Stichtag (vom Inhaber gepflegt)
+ *  - `stichtag`: Datum ab dem digitale Bewegungen verrechnet werden
  *
- * Sobald ein Kunde komplett bezahlt hat, kann sein Eintrag hier auf 0
- * gesetzt werden (oder einfach drin bleiben — wird automatisch nicht mehr
- * angezeigt, wenn Saldo <= 0).
+ * Die Idee: am Stichtag definiert der Inhaber von Hand den aktuellen
+ * offenen Stand jedes Kunden. Alle Bewegungen VOR dem Stichtag fliessen
+ * bereits in diese Zahl ein und werden NICHT extra gezaehlt. Ab dem
+ * Stichtag zaehlen Entnahmen (neue Aufladungen) und Einlagen (Tilgungen)
+ * normal als +/- vom Altbestand.
  */
-export const STARTSALDO_PER_SHOP: Record<string, Record<string, number>> = {
+export interface ShopStartsaldo {
+  stichtag: string; // ISO-Datum 'YYYY-MM-DD'
+  saldo: Record<string, number>;
+}
+
+export const STARTSALDO_PER_SHOP: Record<string, ShopStartsaldo> = {
   MGR: {
-    Baha: 50,
-    Recai: 100,
-    Volkan: 40,
-    Cemal: 100,
-    Uwe: 7,
+    stichtag: '2026-05-12',
+    saldo: {
+      Baha: 50,
+      Recai: 100,
+      Volkan: 40,
+      Cemal: 100,
+      Uwe: 7,
+    },
   },
   STÖ: {
-    // bei Bedarf hier eintragen
+    stichtag: '2026-05-12',
+    saldo: {},
   },
 };
 
@@ -154,13 +164,18 @@ export interface OffeneAufladung {
  * Saldiert alle Bewegungen ueber alle Tage hinweg pro Kunde.
  * Entnahme = Aufladung (Kunde schuldet) | Einlage = Tilgung.
  *
- * Optionaler `startsaldo`-Parameter addiert Altbestand-Schulden.
+ * `startsaldo` (optional): Altbestand-Schulden zum Stichtag. Wenn `stichtag`
+ * gesetzt ist, werden alle Bewegungen VOR diesem Datum ignoriert — sie
+ * stecken bereits im Altbestand. Bewegungen am Stichtag selbst und spaeter
+ * zaehlen wie ueblich.
+ *
  * Rueckgabe: nur Kunden mit offen > 0, sortiert nach aeltestem Datum
  * (Altbestand zuerst).
  */
 export function berechneOffeneAufladungen(
   bewegungen: BewegungLite[],
   startsaldo: Record<string, number> = {},
+  stichtag?: string,
 ): OffeneAufladung[] {
   interface Acc {
     soll: number;     // Summe Entnahmen + Altbestand
@@ -175,6 +190,7 @@ export function berechneOffeneAufladungen(
     map.set(kunde, { soll: betrag, gezahlt: 0, seit: null, anzahl: 0 });
   }
   for (const b of bewegungen) {
+    if (stichtag && b.datum < stichtag) continue;
     const kunde = matchKunde(b.beschreibung);
     if (!kunde) continue;
     const entry = map.get(kunde) ?? { soll: 0, gezahlt: 0, seit: null, anzahl: 0 };
