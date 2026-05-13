@@ -247,10 +247,14 @@ export function useReplaceBewegungen() {
         _bewegungen: bewegungen,
       });
       if (error) {
-        // Falls die Migration 0008 noch nicht angewendet ist
-        // (function not found), fallback auf das alte Verfahren.
+        // Falls die RPC nicht existiert (42883/PGRST202), kaputt definiert ist
+        // (42704 undefined_object, 42703 undefined_column, P0001 raise) oder
+        // sonst ein Schema-Fehler vorliegt, faellt der Save auf das alte
+        // Insert-then-Delete-Verfahren zurueck, damit Eingaben NIE verloren gehen.
         const code = (error as { code?: string }).code;
-        if (code === '42883' || code === 'PGRST202') {
+        const fallbackCodes = ['42883', 'PGRST202', '42704', '42703', '42P01'];
+        if (code && fallbackCodes.includes(code)) {
+          console.warn('[replace_kassenbewegungen] RPC failed, falling back:', error);
           await replaceBewegungenFallback(schichtId, bewegungen);
           return;
         }

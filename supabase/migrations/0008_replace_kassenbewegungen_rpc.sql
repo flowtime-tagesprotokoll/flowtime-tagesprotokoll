@@ -30,7 +30,7 @@ begin
   insert into public.kassenbewegungen (schicht_id, typ, beschreibung, betrag, reihenfolge)
   select
     _schicht_id,
-    (b->>'typ')::public.kassenbewegung_typ,
+    (b->>'typ')::text,
     nullif(b->>'beschreibung', ''),
     (b->>'betrag')::numeric,
     coalesce((b->>'reihenfolge')::int, 0)
