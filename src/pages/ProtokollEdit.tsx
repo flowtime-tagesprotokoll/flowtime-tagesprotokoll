@@ -541,6 +541,14 @@ export function ProtokollEditPage() {
           </div>
         )}
 
+        <div
+          className="text-[13px] text-right"
+          style={{ color: '#fbbf24', letterSpacing: '0.02em' }}
+        >
+          💡 Bei Problemen: App-Fenster schließen, neu öffnen und{' '}
+          <span className="mono font-bold">Strg + Shift + R</span> drücken
+        </div>
+
         {offeneAufladungen.length > 0 && (
           <div
             className="text-[10px] mono px-2.5 py-1 rounded flex flex-wrap items-center gap-x-2.5 gap-y-0.5"

@@ -39,18 +39,6 @@ export function Layout({ children, rightSlot }: LayoutProps) {
   return (
     <div className="min-h-screen flex flex-col">
       <OnlineIndicator />
-      <div
-        className="text-[10px] text-center py-1 px-3 select-none"
-        style={{
-          background: '#0d0d0d',
-          color: '#666',
-          borderBottom: '1px solid #1a1a1a',
-          letterSpacing: '0.02em',
-        }}
-      >
-        Bei Problemen: App-Fenster schließen, neu öffnen und{' '}
-        <span className="mono" style={{ color: '#888' }}>Strg + Shift + R</span> drücken
-      </div>
       <header className="border-b border-border-soft px-6 py-4 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 rounded bg-bg border border-border flex items-center justify-center">
