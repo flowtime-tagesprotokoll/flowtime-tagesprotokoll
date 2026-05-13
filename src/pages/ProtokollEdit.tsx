@@ -555,7 +555,7 @@ export function ProtokollEditPage() {
             {offeneAufladungen.map((a, i) => (
               <span key={a.kunde}>
                 <strong>{a.kunde}</strong>{' '}
-                <span style={{ color: '#a78bfa' }}>{formatEur(a.offen)}</span>
+                <span style={{ color: '#a78bfa' }}>{a.offen.toFixed(2).replace('.', ',')}</span>
                 <span className="text-muted-2">
                   {' '}
                   {a.seit === null
