@@ -285,26 +285,41 @@ export function useAufladungBewegungen(shopId: string, dayCount = 180) {
       const cutoff = new Date();
       cutoff.setDate(cutoff.getDate() - dayCount);
       const cutoffIso = cutoff.toISOString().slice(0, 10);
-      const { data, error } = await supabase
-        .from('protokolle')
-        .select('datum, schichten(kassenbewegungen(typ, beschreibung, betrag))')
-        .eq('shop_id', shopId)
-        .gte('datum', cutoffIso)
-        .order('datum', { ascending: true });
-      if (error) throw error;
-      const out: { typ: 'einlage' | 'entnahme'; beschreibung: string | null; betrag: number; datum: string }[] = [];
-      for (const p of data ?? []) {
-        const datum = (p as { datum: string }).datum;
-        const schichten = ((p as { schichten?: unknown }).schichten ?? []) as Array<{
-          kassenbewegungen?: Array<{ typ: 'einlage' | 'entnahme'; beschreibung: string | null; betrag: number }>;
-        }>;
-        for (const s of schichten) {
-          for (const b of s.kassenbewegungen ?? []) {
-            out.push({ typ: b.typ, beschreibung: b.beschreibung, betrag: Number(b.betrag), datum });
+      // Via security-definer-RPC: liefert nur typ/beschreibung/betrag/datum,
+      // damit Mitarbeiter keine alten Protokolle einsehen koennen.
+      const { data, error } = await supabase.rpc('get_aufladung_bewegungen', {
+        _shop_id: shopId,
+        _since: cutoffIso,
+      });
+      if (error) {
+        // Fallback fuer den Fall, dass die Migration 0010 noch nicht in
+        // der DB ist: alter Pfad via direkter Tabellen-Abfrage.
+        const code = (error as { code?: string }).code;
+        const fallbackCodes = ['42883', 'PGRST202', '42704', '42703', '42P01'];
+        if (!code || !fallbackCodes.includes(code)) throw error;
+        const { data: dRaw, error: e2 } = await supabase
+          .from('protokolle')
+          .select('datum, schichten(kassenbewegungen(typ, beschreibung, betrag))')
+          .eq('shop_id', shopId)
+          .gte('datum', cutoffIso)
+          .order('datum', { ascending: true });
+        if (e2) throw e2;
+        const out: { typ: 'einlage' | 'entnahme'; beschreibung: string | null; betrag: number; datum: string }[] = [];
+        for (const p of dRaw ?? []) {
+          const datum = (p as { datum: string }).datum;
+          const schichten = ((p as { schichten?: unknown }).schichten ?? []) as Array<{
+            kassenbewegungen?: Array<{ typ: 'einlage' | 'entnahme'; beschreibung: string | null; betrag: number }>;
+          }>;
+          for (const s of schichten) {
+            for (const b of s.kassenbewegungen ?? []) {
+              out.push({ typ: b.typ, beschreibung: b.beschreibung, betrag: Number(b.betrag), datum });
+            }
           }
         }
+        return out;
       }
-      return out;
+      return ((data ?? []) as Array<{ typ: 'einlage' | 'entnahme'; beschreibung: string | null; betrag: number | string; datum: string }>)
+        .map((r) => ({ typ: r.typ, beschreibung: r.beschreibung, betrag: Number(r.betrag), datum: r.datum }));
     },
   });
 }
@@ -358,45 +373,57 @@ export function useVortagKasse(shopId: string, datum: string) {
   return useQuery({
     queryKey: ['vortag', shopId, datum],
     queryFn: async (): Promise<{ datum: string; ist: number } | null> => {
-      const { data: protos, error: pErr } = await supabase
-        .from('protokolle')
-        .select('id, datum')
-        .eq('shop_id', shopId)
-        .lt('datum', datum)
-        .order('datum', { ascending: false })
-        .limit(30);
-      if (pErr) throw pErr;
-      if (!protos || protos.length === 0) return null;
-
-      const protoIds = protos.map((p) => p.id);
-      const { data: schichten, error: sErr } = await supabase
-        .from('schichten')
-        .select('protokoll_id, schicht_nr, kassenist')
-        .in('protokoll_id', protoIds);
-      if (sErr) throw sErr;
-
-      // Schichten pro Protokoll gruppieren
-      const byProto = new Map<string, { schicht_nr: number; kassenist: number | null }[]>();
-      for (const s of schichten ?? []) {
-        const list = byProto.get(s.protokoll_id) ?? [];
-        list.push({ schicht_nr: s.schicht_nr, kassenist: s.kassenist });
-        byProto.set(s.protokoll_id, list);
-      }
-
-      // Vom neuesten Protokoll abwaerts: spaeteste Schicht mit IST nehmen
-      for (const p of protos) {
-        const list = byProto.get(p.id) ?? [];
-        const sorted = [...list].sort((a, b) => b.schicht_nr - a.schicht_nr);
-        const hit = sorted.find((s) => s.kassenist !== null && s.kassenist !== undefined);
-        if (hit) {
-          // Postgres-numeric kommt als string oder number; defensiv parsen
-          const raw = String(hit.kassenist).trim().replace(',', '.');
-          const ist = parseFloat(raw);
-          if (!Number.isFinite(ist)) continue;
-          return { datum: p.datum, ist };
+      // Via security-definer-RPC: liefert nur datum + ist, nichts weiter.
+      // Mitarbeiter kommen damit nicht an alte Schichten-Details ran.
+      const { data, error } = await supabase.rpc('get_vortags_ist', {
+        _shop_id: shopId,
+        _before_date: datum,
+      });
+      if (error) {
+        const code = (error as { code?: string }).code;
+        const fallbackCodes = ['42883', 'PGRST202', '42704', '42703', '42P01'];
+        if (!code || !fallbackCodes.includes(code)) throw error;
+        // Fallback (Migration noch nicht angewendet): alter Pfad
+        const { data: protos, error: pErr } = await supabase
+          .from('protokolle')
+          .select('id, datum')
+          .eq('shop_id', shopId)
+          .lt('datum', datum)
+          .order('datum', { ascending: false })
+          .limit(30);
+        if (pErr) throw pErr;
+        if (!protos || protos.length === 0) return null;
+        const protoIds = protos.map((p) => p.id);
+        const { data: schichten, error: sErr } = await supabase
+          .from('schichten')
+          .select('protokoll_id, schicht_nr, kassenist')
+          .in('protokoll_id', protoIds);
+        if (sErr) throw sErr;
+        const byProto = new Map<string, { schicht_nr: number; kassenist: number | null }[]>();
+        for (const s of schichten ?? []) {
+          const list = byProto.get(s.protokoll_id) ?? [];
+          list.push({ schicht_nr: s.schicht_nr, kassenist: s.kassenist });
+          byProto.set(s.protokoll_id, list);
         }
+        for (const p of protos) {
+          const list = byProto.get(p.id) ?? [];
+          const sorted = [...list].sort((a, b) => b.schicht_nr - a.schicht_nr);
+          const hit = sorted.find((s) => s.kassenist !== null && s.kassenist !== undefined);
+          if (hit) {
+            const raw = String(hit.kassenist).trim().replace(',', '.');
+            const ist = parseFloat(raw);
+            if (!Number.isFinite(ist)) continue;
+            return { datum: p.datum, ist };
+          }
+        }
+        return null;
       }
-      return null;
+      const rows = (data ?? []) as Array<{ datum: string; ist: number | string }>;
+      if (rows.length === 0) return null;
+      const raw = String(rows[0].ist).trim().replace(',', '.');
+      const ist = parseFloat(raw);
+      if (!Number.isFinite(ist)) return null;
+      return { datum: rows[0].datum, ist };
     },
   });
 }
