@@ -556,7 +556,7 @@ function DayCell({
   const wtNamen = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'];
   const date = new Date(datum + 'T00:00:00');
   const wt = (date.getDay() + 6) % 7;
-  const datumKurz = `${wtNamen[wt]}·${tag}.${pad2(Number(datum.slice(5, 7)))}.`;
+  const datumKurz = `${wtNamen[wt]} ${tag}.${pad2(Number(datum.slice(5, 7)))}.`;
 
   // Akzent-Linie links: heute lime, geschlossen rot, sonst nichts
   const akzentLinks = isToday
