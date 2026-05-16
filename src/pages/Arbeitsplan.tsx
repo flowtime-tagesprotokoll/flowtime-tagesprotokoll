@@ -223,27 +223,45 @@ export function ArbeitsplanPage() {
       if (istGeschlossen(d.datum)) continue;
       const hrs = defaultHours(shopKurz, d.wochentag);
       if (!hrs) continue;
-      const tagesDauer = (parseHHMM(hrs.bis) ?? 0) - (parseHHMM(hrs.von) ?? 0);
+      const vonNum = parseHHMM(hrs.von) ?? 0;
+      const bisNum = parseHHMM(hrs.bis) ?? 0;
+      const tagesDauer = bisNum - vonNum;
       const s1 = eintragMap.get(`${d.datum}|1`)?.trim() ?? '';
       const s2 = eintragMap.get(`${d.datum}|2`)?.trim() ?? '';
       const wz = wechselzeitMap.get(d.datum)?.trim() || DEFAULT_WECHSELZEIT;
-
-      if (schichten === 1 || s1 === s2 || (s1 && !s2) || (!s1 && s2)) {
-        const name = s1 || s2;
-        if (name) {
-          if (isPureName(name)) addH(name, tagesDauer);
-          else addH(name, tagesDauer, true);
-        }
-        continue;
-      }
-      // Geteilt
       const wzNum = parseHHMM(wz) ?? parseHHMM(DEFAULT_WECHSELZEIT) ?? 17;
-      const vonNum = parseHHMM(hrs.von) ?? 0;
-      const bisNum = parseHHMM(hrs.bis) ?? 0;
       const frueh = Math.max(0, wzNum - vonNum);
       const spaet = Math.max(0, bisNum - wzNum);
-      if (s1) addH(s1, frueh, !isPureName(s1));
-      if (s2) addH(s2, spaet, !isPureName(s2));
+
+      // Shop mit nur 1 Schicht: derjenige Name (egal welche Reihe gefuellt) -> ganzer Tag
+      if (schichten === 1) {
+        const name = s1 || s2;
+        if (name) addH(name, tagesDauer, !isPureName(name));
+        continue;
+      }
+
+      // 2-Schicht-Shop
+      if (!s1 && !s2) continue;
+
+      // Beide gleich -> EINE Person den ganzen Tag
+      if (s1 && s2 && s1 === s2) {
+        addH(s1, tagesDauer, !isPureName(s1));
+        continue;
+      }
+
+      // Nur S1 gefuellt -> Person hat nur die Frueh-Haelfte gearbeitet
+      if (s1 && !s2) {
+        addH(s1, frueh, !isPureName(s1));
+        continue;
+      }
+      // Nur S2 gefuellt -> Person hat nur die Spaet-Haelfte gearbeitet
+      if (!s1 && s2) {
+        addH(s2, spaet, !isPureName(s2));
+        continue;
+      }
+      // Beide gefuellt, verschiedene Personen -> splitten
+      addH(s1, frueh, !isPureName(s1));
+      addH(s2, spaet, !isPureName(s2));
     }
     return { summe, ungenau };
   }, [shopId, shops, monthDays, eintragMap, wechselzeitMap]);
