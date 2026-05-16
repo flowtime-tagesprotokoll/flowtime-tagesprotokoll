@@ -34,6 +34,16 @@ function RedirectIfAuth({ children }: { children: ReactNode }) {
   return <>{children}</>;
 }
 
+function AuthRefresher() {
+  // Invalidiert beim Wechsel von Mitarbeiter <-> Admin alle Queries, damit
+  // nicht kurz die alte (eingeschraenkte) Datenmenge angezeigt wird.
+  const sessionKind = useAuth((s) => s.session?.kind ?? null);
+  useEffect(() => {
+    queryClient.invalidateQueries();
+  }, [sessionKind]);
+  return null;
+}
+
 export default function App() {
   useEffect(() => {
     checkForUpdates();
@@ -42,6 +52,7 @@ export default function App() {
   return (
     <SingleInstanceGate>
     <QueryClientProvider client={queryClient}>
+      <AuthRefresher />
       <BrowserRouter basename={import.meta.env.BASE_URL}>
         <Routes>
           <Route
