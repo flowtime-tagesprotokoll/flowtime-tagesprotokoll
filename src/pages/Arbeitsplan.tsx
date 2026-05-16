@@ -671,6 +671,11 @@ function DayBody({
           datum={datum}
           schichtLabel="Ganztags"
           variant="full"
+          onSplit={
+            schichten === 2 && value
+              ? () => onSave(2, '') // S2 leeren -> Zelle rendert als geteilt
+              : undefined
+          }
         />
       </div>
     );
@@ -775,6 +780,8 @@ interface NamePickerProps {
   schichtLabel: string;
   /** 'full' = ganze Tageszelle fuellen (Ganztags); 'half' = obere/untere Haelfte */
   variant: 'full' | 'half';
+  /** Wenn gesetzt, zeigt der Picker einen 'Schicht teilen'-Button. */
+  onSplit?: () => void;
 }
 
 function NamePicker({
@@ -786,6 +793,7 @@ function NamePicker({
   datum,
   schichtLabel,
   variant,
+  onSplit,
 }: NamePickerProps) {
   const [open, setOpen] = useState(false);
   const farbe = farbeFuerEintrag(value);
@@ -849,6 +857,14 @@ function NamePicker({
           mitarbeiterListe={mitarbeiterListe}
           datum={datum}
           schichtLabel={schichtLabel}
+          onSplit={
+            onSplit
+              ? () => {
+                  onSplit();
+                  setOpen(false);
+                }
+              : undefined
+          }
         />
       )}
     </>
@@ -872,6 +888,7 @@ interface NamePickerDropdownProps {
   mitarbeiterListe: Profile[];
   datum: string;
   schichtLabel: string;
+  onSplit?: () => void;
 }
 
 function NamePickerDropdown({
@@ -881,6 +898,7 @@ function NamePickerDropdown({
   mitarbeiterListe,
   datum,
   schichtLabel,
+  onSplit,
 }: NamePickerDropdownProps) {
   const [custom, setCustom] = useState(current);
   return (
@@ -942,6 +960,22 @@ function NamePickerDropdown({
             </button>
           </div>
         </div>
+
+        {onSplit && (
+          <button
+            type="button"
+            onClick={onSplit}
+            className="w-full text-[11px] py-1.5 rounded transition-colors"
+            style={{
+              background: 'rgba(255,255,255,0.04)',
+              border: '1px solid #2a2a2a',
+              color: '#bdbdbd',
+            }}
+            title="Aus der Ganztags-Schicht zwei verschiedene Schichten machen"
+          >
+            ↕ Schicht teilen (Spätschicht separat eintragen)
+          </button>
+        )}
 
         <div className="flex justify-between items-center pt-1 border-t border-border-soft">
           <button
