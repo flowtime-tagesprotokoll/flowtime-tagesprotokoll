@@ -354,7 +354,12 @@ export function ArbeitsplanPage() {
             <div
               key={wi}
               className="grid grid-cols-7"
-              style={{ borderTop: '1px solid #1d1d1d' }}
+              style={{
+                borderTop:
+                  wi === 0
+                    ? '1px solid #1f1f1f'
+                    : '6px solid #0a0a0a',
+              }}
             >
               {woche.map((d, di) => {
                 if (!d) {
