@@ -318,13 +318,13 @@ export function ArbeitsplanPage() {
 
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_220px] gap-3 items-start">
         <div className="bg-surface/40 border border-border-soft rounded-lg overflow-hidden">
-          <div className="grid grid-cols-7 text-[10px] uppercase tracking-widest text-muted">
+          <div className="grid grid-cols-7 text-[11px] font-semibold uppercase tracking-widest">
             {WOCHENTAGE.map((wt, i) => (
               <div
                 key={wt}
-                className="px-2 py-2 text-center"
+                className="px-2 py-2.5 text-center"
                 style={{
-                  color: i >= 5 ? '#b08850' : '#666',
+                  color: i >= 5 ? '#b08850' : '#888',
                 }}
               >
                 {wt}
@@ -542,7 +542,7 @@ function DayCell({
       }}
     >
       <div
-        className="px-2 pt-1.5 pb-1 text-[10px] mono flex items-center justify-between gap-1 select-none"
+        className="px-2 pt-1.5 pb-1 flex items-baseline justify-between gap-1 select-none mono"
         style={{
           color: isToday
             ? '#d4ff00'
@@ -550,13 +550,16 @@ function DayCell({
               ? '#a85555'
               : weekend
                 ? '#b08850'
-                : '#666',
-          letterSpacing: '0.04em',
+                : '#bdbdbd',
         }}
       >
-        <span>{datumKurz}</span>
+        <span className="text-[14px] font-semibold tracking-tight">{datumKurz}</span>
         {!geschlossen && hours && (
-          <span style={{ color: '#444' }} title={`Öffnungszeit ${hours.von}–${hours.bis}`}>
+          <span
+            className="text-[9px]"
+            style={{ color: isToday ? '#88a800' : '#555' }}
+            title={`Öffnungszeit ${hours.von}–${hours.bis}`}
+          >
             {hours.von}–{hours.bis}
           </span>
         )}
