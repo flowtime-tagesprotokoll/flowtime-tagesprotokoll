@@ -358,7 +358,7 @@ export function ArbeitsplanPage() {
                 borderTop:
                   wi === 0
                     ? '1px solid #1f1f1f'
-                    : '6px solid #0a0a0a',
+                    : '14px solid #0a0a0a',
               }}
             >
               {woche.map((d, di) => {
