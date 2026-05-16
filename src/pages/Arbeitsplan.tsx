@@ -525,7 +525,7 @@ interface DayCellProps {
 function DayCell({
   datum,
   tag,
-  weekend,
+  weekend: _weekend,
   isToday,
   canEdit,
   schichten,
