@@ -791,8 +791,8 @@ function NamePicker({
 
   const baseCls =
     variant === 'full'
-      ? 'flex-1 px-2 flex items-center justify-center text-[15px] font-semibold tracking-wide'
-      : 'flex-1 px-2 flex items-center text-[13px] font-medium';
+      ? 'flex-1 px-2 flex items-center justify-center text-center text-[15px] font-semibold tracking-wide'
+      : 'flex-1 px-2 flex items-center justify-center text-center text-[13px] font-medium';
   const sharedStyle: React.CSSProperties = {
     background: bg,
     color: textColor,
@@ -810,7 +810,7 @@ function NamePicker({
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className={`${baseCls} w-full text-left transition-colors`}
+        className={`${baseCls} w-full transition-colors`}
         style={{
           ...sharedStyle,
           cursor: 'pointer',
