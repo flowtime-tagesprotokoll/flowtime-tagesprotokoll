@@ -4,6 +4,7 @@ import { Layout } from '../components/Layout';
 import { useShops } from '../lib/queries';
 import { useAuth } from '../lib/authStore';
 import { supabase } from '../lib/supabase';
+import { defaultHours, istGeschlossen, shopSchichten } from '../lib/shopConfig';
 
 interface Eintrag {
   shop_id: string;
@@ -241,6 +242,11 @@ export function ArbeitsplanPage() {
                 }
                 const isToday = d.datum === heute;
                 const istWeekend = d.wochentag >= 5;
+                const shop = shops?.find((s) => s.id === shopId);
+                const shopKurz = shop?.kurz ?? '';
+                const schichten = shopSchichten(shopKurz);
+                const hours = defaultHours(shopKurz, d.wochentag);
+                const geschlossen = istGeschlossen(d.datum);
                 return (
                   <DayCell
                     key={di}
@@ -249,6 +255,9 @@ export function ArbeitsplanPage() {
                     weekend={istWeekend}
                     isToday={isToday}
                     canEdit={canEdit}
+                    schichten={schichten}
+                    geschlossen={geschlossen}
+                    hours={hours}
                     s1={eintragMap.get(`${d.datum}|1`) ?? ''}
                     s2={eintragMap.get(`${d.datum}|2`) ?? ''}
                     rightBorder={di < 6}
@@ -279,6 +288,9 @@ interface DayCellProps {
   weekend: boolean;
   isToday: boolean;
   canEdit: boolean;
+  schichten: 1 | 2;
+  geschlossen: boolean;
+  hours: { von: string; bis: string } | null;
   s1: string;
   s2: string;
   rightBorder: boolean;
@@ -291,6 +303,9 @@ function DayCell({
   weekend,
   isToday,
   canEdit,
+  schichten,
+  geschlossen,
+  hours,
   s1,
   s2,
   rightBorder,
@@ -315,72 +330,96 @@ function DayCell({
     <div
       style={{
         borderRight: rightBorder ? '1px solid #1f1f1f' : 'none',
-        background: isToday
-          ? 'rgba(212,255,0,0.05)'
-          : weekend
-            ? 'rgba(251,191,36,0.04)'
-            : '#141414',
+        background: geschlossen
+          ? 'rgba(248,113,113,0.04)'
+          : isToday
+            ? 'rgba(212,255,0,0.05)'
+            : weekend
+              ? 'rgba(251,191,36,0.04)'
+              : '#141414',
         minHeight: 84,
       }}
     >
       <div
-        className="px-2 py-1 text-[11px] font-bold mono"
+        className="px-2 py-1 text-[11px] font-bold mono flex items-center justify-between gap-1"
         style={{
-          color: isToday ? '#d4ff00' : weekend ? '#fbbf24' : '#888',
+          color: geschlossen ? '#f87171' : isToday ? '#d4ff00' : weekend ? '#fbbf24' : '#888',
           borderBottom: '1px solid #1f1f1f',
         }}
       >
-        {tag}.
-      </div>
-      <div className="px-1.5 py-1 space-y-1">
-        {canEdit ? (
-          <>
-            <input
-              type="text"
-              value={val1}
-              onChange={(e) => setVal1(e.target.value)}
-              onBlur={() => commit(1, val1, s1)}
-              placeholder="Früh"
-              maxLength={20}
-              className="w-full px-2 py-1 text-[13px] mono rounded"
-              style={{
-                background: '#0a0a0a',
-                border: '1px solid #2a2a2a',
-                color: '#f5f5f5',
-              }}
-            />
-            <input
-              type="text"
-              value={val2}
-              onChange={(e) => setVal2(e.target.value)}
-              onBlur={() => commit(2, val2, s2)}
-              placeholder="Spät"
-              maxLength={20}
-              className="w-full px-2 py-1 text-[13px] mono rounded"
-              style={{
-                background: '#0a0a0a',
-                border: '1px solid #2a2a2a',
-                color: '#f5f5f5',
-              }}
-            />
-          </>
-        ) : (
-          <>
-            <div
-              className="px-2 py-1 text-[13px] mono rounded min-h-[26px]"
-              style={{ background: '#0a0a0a', color: '#f5f5f5' }}
-            >
-              {s1 || <span style={{ color: '#444' }}>—</span>}
-            </div>
-            <div
-              className="px-2 py-1 text-[13px] mono rounded min-h-[26px]"
-              style={{ background: '#0a0a0a', color: '#f5f5f5' }}
-            >
-              {s2 || <span style={{ color: '#444' }}>—</span>}
-            </div>
-          </>
+        <span>{tag}.</span>
+        {!geschlossen && hours && (
+          <span
+            className="text-[10px] font-normal mono"
+            style={{ color: '#555' }}
+            title={`Oeffnungszeit ${hours.von}–${hours.bis}`}
+          >
+            {hours.von}–{hours.bis}
+          </span>
         )}
       </div>
+      {geschlossen ? (
+        <div
+          className="px-2 py-3 text-center text-[12px] font-bold uppercase tracking-wider"
+          style={{ color: '#f87171' }}
+        >
+          Geschlossen
+        </div>
+      ) : (
+        <div className="px-1.5 py-1 space-y-1">
+          {canEdit ? (
+            <>
+              <input
+                type="text"
+                value={val1}
+                onChange={(e) => setVal1(e.target.value)}
+                onBlur={() => commit(1, val1, s1)}
+                placeholder={schichten === 1 ? 'Schicht' : 'Früh'}
+                maxLength={40}
+                className="w-full px-2 py-1 text-[13px] mono rounded"
+                style={{
+                  background: '#0a0a0a',
+                  border: '1px solid #2a2a2a',
+                  color: '#f5f5f5',
+                }}
+              />
+              {schichten === 2 && (
+                <input
+                  type="text"
+                  value={val2}
+                  onChange={(e) => setVal2(e.target.value)}
+                  onBlur={() => commit(2, val2, s2)}
+                  placeholder="Spät"
+                  maxLength={40}
+                  className="w-full px-2 py-1 text-[13px] mono rounded"
+                  style={{
+                    background: '#0a0a0a',
+                    border: '1px solid #2a2a2a',
+                    color: '#f5f5f5',
+                  }}
+                />
+              )}
+            </>
+          ) : (
+            <>
+              <div
+                className="px-2 py-1 text-[13px] mono rounded min-h-[26px]"
+                style={{ background: '#0a0a0a', color: '#f5f5f5' }}
+              >
+                {s1 || <span style={{ color: '#444' }}>—</span>}
+              </div>
+              {schichten === 2 && (
+                <div
+                  className="px-2 py-1 text-[13px] mono rounded min-h-[26px]"
+                  style={{ background: '#0a0a0a', color: '#f5f5f5' }}
+                >
+                  {s2 || <span style={{ color: '#444' }}>—</span>}
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      )}
     </div>
   );
 }
