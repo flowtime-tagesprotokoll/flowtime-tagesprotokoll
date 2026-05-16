@@ -414,36 +414,103 @@ function DayCell({
           Geschlossen
         </div>
       ) : (
-        <div className="px-1.5 py-1.5 space-y-1">
-          <NamePicker
-            value={s1}
-            onChange={(v) => onSave(1, v)}
-            placeholder={schichten === 1 ? 'Schicht' : 'Früh'}
-            canEdit={canEdit}
-            mitarbeiterListe={mitarbeiterListe}
-            datum={datum}
-            schichtLabel="Frühschicht"
-          />
-          {schichten === 2 && (
-            <>
-              <WechselzeitField
-                value={wechselzeit}
-                canEdit={canEdit}
-                onSave={onSaveWechselzeit}
-              />
-              <NamePicker
-                value={s2}
-                onChange={(v) => onSave(2, v)}
-                placeholder="Spät"
-                canEdit={canEdit}
-                mitarbeiterListe={mitarbeiterListe}
-                datum={datum}
-                schichtLabel="Spätschicht"
-              />
-            </>
-          )}
-        </div>
+        <DayBody
+          datum={datum}
+          schichten={schichten}
+          canEdit={canEdit}
+          s1={s1}
+          s2={s2}
+          wechselzeit={wechselzeit}
+          mitarbeiterListe={mitarbeiterListe}
+          onSave={onSave}
+          onSaveWechselzeit={onSaveWechselzeit}
+        />
       )}
+    </div>
+  );
+}
+
+interface DayBodyProps {
+  datum: string;
+  schichten: 1 | 2;
+  canEdit: boolean;
+  s1: string;
+  s2: string;
+  wechselzeit: string;
+  mitarbeiterListe: Profile[];
+  onSave: (schicht_nr: number, eintrag: string) => void;
+  onSaveWechselzeit: (wz: string) => void;
+}
+
+const DEFAULT_WECHSELZEIT = '17:00';
+
+function DayBody({
+  datum,
+  schichten,
+  canEdit,
+  s1,
+  s2,
+  wechselzeit,
+  mitarbeiterListe,
+  onSave,
+  onSaveWechselzeit,
+}: DayBodyProps) {
+  // Falls beide Schichten denselben Eintrag haben (oder es nur 1 Schicht gibt),
+  // visuell als EIN durchgehender Eintrag rendern. Wenn s1 leer und s2 nicht
+  // (oder umgekehrt) auch als ein Eintrag — die andere wird als "der ganze
+  // Tag macht eine Person" gezeigt.
+  const same =
+    schichten === 1 ||
+    (s1.trim() && s2.trim() && s1.trim() === s2.trim()) ||
+    (!s1.trim() && !s2.trim());
+
+  if (same) {
+    const value = s1.trim() || s2.trim();
+    return (
+      <div className="px-1.5 py-1.5">
+        <NamePicker
+          value={value}
+          onChange={(v) => {
+            onSave(1, v);
+            if (schichten === 2) onSave(2, v);
+          }}
+          placeholder="Mitarbeiter wählen"
+          canEdit={canEdit}
+          mitarbeiterListe={mitarbeiterListe}
+          datum={datum}
+          schichtLabel="Ganztags"
+          tall
+        />
+      </div>
+    );
+  }
+
+  // Geteilte Schicht: Früh + Wechselzeit + Spät
+  return (
+    <div className="px-1.5 py-1.5 space-y-1">
+      <NamePicker
+        value={s1}
+        onChange={(v) => onSave(1, v)}
+        placeholder="Früh"
+        canEdit={canEdit}
+        mitarbeiterListe={mitarbeiterListe}
+        datum={datum}
+        schichtLabel="Frühschicht"
+      />
+      <WechselzeitField
+        value={wechselzeit}
+        canEdit={canEdit}
+        onSave={onSaveWechselzeit}
+      />
+      <NamePicker
+        value={s2}
+        onChange={(v) => onSave(2, v)}
+        placeholder="Spät"
+        canEdit={canEdit}
+        mitarbeiterListe={mitarbeiterListe}
+        datum={datum}
+        schichtLabel="Spätschicht"
+      />
     </div>
   );
 }
@@ -455,45 +522,53 @@ interface WechselzeitFieldProps {
 }
 
 function WechselzeitField({ value, canEdit, onSave }: WechselzeitFieldProps) {
-  const [val, setVal] = useState(value);
+  // Wenn nichts in der DB steht, zeigen wir den Default (17:00) als Anzeige
+  // ohne ihn aktiv zu speichern. Erst wenn der User editiert + abweicht,
+  // wird gespeichert. Leeren = wieder Default-Anzeige.
+  const display = value.trim() || DEFAULT_WECHSELZEIT;
+  const [val, setVal] = useState(display);
   useEffect(() => {
-    setVal(value);
-  }, [value]);
+    setVal(display);
+  }, [display]);
   function commit() {
-    if (val.trim() === value.trim()) return;
-    onSave(val.trim());
+    const trimmed = val.trim();
+    // wenn der User wieder den Default eintippt -> speichern als leer
+    const toSave = trimmed === DEFAULT_WECHSELZEIT ? '' : trimmed;
+    if (toSave === value.trim()) return;
+    onSave(toSave);
   }
   if (!canEdit) {
-    if (!value) return null;
     return (
       <div
-        className="text-center text-[10px] mono py-0.5"
-        style={{ color: '#888' }}
-        title="Schichtwechsel-Zeit"
+        className="text-center text-[10px] mono"
+        style={{ color: value ? '#fbbf24' : '#555' }}
+        title="Schichtwechsel-Uhrzeit"
       >
-        ↻ {value}
+        ↻ {display}
       </div>
     );
   }
   return (
-    <input
-      type="text"
-      value={val}
-      onChange={(e) => setVal(e.target.value)}
-      onBlur={commit}
-      onKeyDown={(e) => {
-        if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
-      }}
-      placeholder="↻ Wechsel"
-      maxLength={10}
-      className="w-full px-2 py-0.5 text-[10px] mono rounded text-center"
-      style={{
-        background: 'transparent',
-        border: '1px dashed #2a2a2a',
-        color: value ? '#aaa' : '#555',
-      }}
-      title="Schichtwechsel-Zeit, z.B. '15:00'"
-    />
+    <div className="flex items-center justify-center gap-1">
+      <span className="text-[10px] mono" style={{ color: '#666' }}>↻</span>
+      <input
+        type="time"
+        value={val}
+        onChange={(e) => setVal(e.target.value)}
+        onBlur={commit}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
+        }}
+        className="px-1 py-0 text-[10px] mono rounded text-center"
+        style={{
+          background: 'transparent',
+          border: '1px dashed #2a2a2a',
+          color: value ? '#fbbf24' : '#888',
+          width: 70,
+        }}
+        title="Schichtwechsel-Uhrzeit (Standard 17:00)"
+      />
+    </div>
   );
 }
 
@@ -505,6 +580,8 @@ interface NamePickerProps {
   mitarbeiterListe: Profile[];
   datum: string;
   schichtLabel: string;
+  /** Wenn true, wird der Chip groesser dargestellt (Ganztags). */
+  tall?: boolean;
 }
 
 function NamePicker({
@@ -515,6 +592,7 @@ function NamePicker({
   mitarbeiterListe,
   datum,
   schichtLabel,
+  tall,
 }: NamePickerProps) {
   const [open, setOpen] = useState(false);
   const farbe = farbeFuerEintrag(value);
@@ -530,11 +608,14 @@ function NamePicker({
         border: '1px dashed #2a2a2a',
         color: '#555',
       };
+  const heightCls = tall ? 'min-h-[56px]' : 'min-h-[26px]';
+  const padCls = tall ? 'px-3 py-3' : 'px-2 py-1';
+  const fontCls = tall ? 'text-[15px] font-semibold' : 'text-[13px]';
 
   if (!canEdit) {
     return (
       <div
-        className="px-2 py-1 text-[13px] mono rounded min-h-[26px] truncate"
+        className={`${padCls} ${fontCls} mono rounded ${heightCls} truncate flex items-center`}
         style={chipStyle}
         title={value || ''}
       >
@@ -548,14 +629,14 @@ function NamePicker({
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="w-full px-2 py-1 text-[13px] mono rounded truncate text-left transition-colors hover:brightness-125"
+        className={`w-full ${padCls} ${fontCls} mono rounded ${heightCls} truncate text-left transition-colors hover:brightness-125 flex items-center`}
         style={chipStyle}
         title={value || placeholder}
       >
         {value || <span style={{ color: '#666' }}>{placeholder}</span>}
       </button>
       {open && (
-        <NamePickerModal
+        <NamePickerDropdown
           current={value}
           onSelect={(v) => {
             onChange(v);
@@ -571,7 +652,7 @@ function NamePicker({
   );
 }
 
-interface NamePickerModalProps {
+interface NamePickerDropdownProps {
   current: string;
   onSelect: (value: string) => void;
   onClose: () => void;
@@ -580,31 +661,31 @@ interface NamePickerModalProps {
   schichtLabel: string;
 }
 
-function NamePickerModal({
+function NamePickerDropdown({
   current,
   onSelect,
   onClose,
   mitarbeiterListe,
   datum,
   schichtLabel,
-}: NamePickerModalProps) {
+}: NamePickerDropdownProps) {
   const [custom, setCustom] = useState(current);
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center p-4"
-      style={{ background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)' }}
+      style={{ background: 'rgba(0,0,0,0.6)' }}
       onClick={onClose}
     >
       <div
-        className="bg-surface border border-border rounded-xl p-5 w-full max-w-md space-y-4 shadow-2xl"
+        className="bg-surface border border-border rounded-lg p-3 w-full max-w-xs space-y-2 shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
-        <div>
-          <h3 className="text-base font-bold">{schichtLabel}</h3>
-          <p className="text-xs text-muted mt-0.5 mono">{datum}</p>
+        <div className="flex items-center justify-between text-[11px] mono text-muted px-1">
+          <span>{schichtLabel}</span>
+          <span>{datum}</span>
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+        <div className="space-y-1 max-h-72 overflow-y-auto">
           {mitarbeiterListe.map((p) => {
             const fn = firstName(p.name);
             const f = farbeFuerEintrag(fn);
@@ -613,7 +694,7 @@ function NamePickerModal({
                 key={p.id}
                 type="button"
                 onClick={() => onSelect(fn)}
-                className="px-3 py-2 rounded text-sm font-semibold text-left transition-all hover:brightness-125"
+                className="w-full px-3 py-2 rounded text-sm font-semibold text-left transition-all hover:brightness-125"
                 style={{
                   background: f?.bg ?? '#1c1c1c',
                   border: `1px solid ${f?.border ?? '#2a2a2a'}`,
@@ -626,40 +707,39 @@ function NamePickerModal({
           })}
         </div>
 
-        <div className="border-t border-border-soft pt-3 space-y-2">
-          <div className="text-[11px] uppercase tracking-wider text-muted">
-            Eigener Eintrag (z.B. „Soner ab 18:00")
+        <div className="border-t border-border-soft pt-2 space-y-1">
+          <div className="text-[10px] uppercase tracking-wider text-muted">
+            Eigener Eintrag
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-1">
             <input
               type="text"
               value={custom}
               onChange={(e) => setCustom(e.target.value)}
               maxLength={40}
-              placeholder="Freitext …"
-              className="field-input text-sm flex-1"
-              autoFocus
+              placeholder="z.B. Soner ab 18:00"
+              className="field-input text-xs flex-1"
             />
             <button
               type="button"
               onClick={() => onSelect(custom)}
-              className="btn-primary text-sm px-4"
+              className="btn-primary text-xs px-3"
             >
-              Übernehmen
+              OK
             </button>
           </div>
         </div>
 
-        <div className="flex justify-between items-center pt-1">
+        <div className="flex justify-between items-center pt-1 border-t border-border-soft">
           <button
             type="button"
             onClick={() => onSelect('')}
-            className="text-xs text-minus hover:underline"
+            className="text-[11px] text-minus hover:underline px-2 py-1"
           >
-            × Feld leeren
+            × leeren
           </button>
-          <button type="button" onClick={onClose} className="btn-ghost text-xs px-3 py-1.5">
-            Abbrechen
+          <button type="button" onClick={onClose} className="text-[11px] text-muted hover:text-text px-2 py-1">
+            abbrechen
           </button>
         </div>
       </div>
