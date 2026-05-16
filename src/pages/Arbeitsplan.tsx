@@ -380,6 +380,15 @@ export function ArbeitsplanPage() {
                 const shopKurz = shop?.kurz ?? '';
                 const schichten = shopSchichten(shopKurz);
                 const hours = defaultHours(shopKurz, d.wochentag);
+                const baseline = defaultHours(shopKurz, 0); // Montag = Referenz
+                let specialHoursLabel = '';
+                if (hours && baseline) {
+                  const vonDiff = hours.von !== baseline.von;
+                  const bisDiff = hours.bis !== baseline.bis;
+                  if (vonDiff && bisDiff) specialHoursLabel = `${hours.von}–${hours.bis}`;
+                  else if (vonDiff) specialHoursLabel = `ab ${hours.von}`;
+                  else if (bisDiff) specialHoursLabel = `bis ${hours.bis}`;
+                }
                 const geschlossen = istGeschlossen(d.datum);
                 return (
                   <DayCell
@@ -392,6 +401,7 @@ export function ArbeitsplanPage() {
                     schichten={schichten}
                     geschlossen={geschlossen}
                     hours={hours}
+                    specialHoursLabel={specialHoursLabel}
                     s1={eintragMap.get(`${d.datum}|1`) ?? ''}
                     s2={eintragMap.get(`${d.datum}|2`) ?? ''}
                     wechselzeit={wechselzeitMap.get(d.datum) ?? ''}
@@ -513,6 +523,8 @@ interface DayCellProps {
   schichten: 1 | 2;
   geschlossen: boolean;
   hours: { von: string; bis: string } | null;
+  /** Wird nur angezeigt wenn die Oeffnungszeit von der Montag-Baseline abweicht. */
+  specialHoursLabel: string;
   s1: string;
   s2: string;
   wechselzeit: string;
@@ -530,7 +542,8 @@ function DayCell({
   canEdit,
   schichten,
   geschlossen,
-  hours,
+  hours: _hours,
+  specialHoursLabel,
   s1,
   s2,
   wechselzeit,
@@ -574,13 +587,13 @@ function DayCell({
         }}
       >
         <span className="text-[14px] font-semibold tracking-tight">{datumKurz}</span>
-        {!geschlossen && hours && (
+        {!geschlossen && specialHoursLabel && (
           <span
-            className="text-[9px]"
-            style={{ color: isToday ? '#88a800' : '#555' }}
-            title={`Öffnungszeit ${hours.von}–${hours.bis}`}
+            className="text-[10px]"
+            style={{ color: isToday ? '#88a800' : '#888' }}
+            title="Abweichende Öffnungszeit"
           >
-            {hours.von}–{hours.bis}
+            {specialHoursLabel}
           </span>
         )}
       </div>
