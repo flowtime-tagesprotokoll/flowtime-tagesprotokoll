@@ -342,7 +342,7 @@ export function ArbeitsplanPage() {
                 key={wt}
                 className="px-2 py-2.5 text-center"
                 style={{
-                  color: i >= 5 ? '#b08850' : '#888',
+                  color: '#888',
                   borderRight: i < 6 ? '7px solid #0a0a0a' : 'none',
                 }}
               >
@@ -545,14 +545,12 @@ function DayCell({
   const wt = (date.getDay() + 6) % 7;
   const datumKurz = `${wtNamen[wt]}·${tag}.${pad2(Number(datum.slice(5, 7)))}.`;
 
-  // Akzent-Linie links: heute lime, geschlossen rot, wochenende dezent gold, sonst nichts
+  // Akzent-Linie links: heute lime, geschlossen rot, sonst nichts
   const akzentLinks = isToday
     ? '#d4ff00'
     : geschlossen
       ? '#a85555'
-      : weekend
-        ? 'rgba(180,140,80,0.35)'
-        : 'transparent';
+      : 'transparent';
 
   return (
     <div
@@ -572,9 +570,7 @@ function DayCell({
             ? '#d4ff00'
             : geschlossen
               ? '#a85555'
-              : weekend
-                ? '#b08850'
-                : '#bdbdbd',
+              : '#bdbdbd',
         }}
       >
         <span className="text-[14px] font-semibold tracking-tight">{datumKurz}</span>
