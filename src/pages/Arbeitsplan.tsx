@@ -15,6 +15,12 @@ interface Eintrag {
   eintrag: string | null;
 }
 
+interface TagMeta {
+  shop_id: string;
+  datum: string;
+  wechselzeit: string | null;
+}
+
 const WOCHENTAGE = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'] as const;
 const MONATSNAMEN = [
   'Januar', 'Februar', 'März', 'April', 'Mai', 'Juni',
@@ -98,6 +104,45 @@ export function ArbeitsplanPage() {
     }
     return m;
   }, [eintraege]);
+
+  const { data: tagMetas } = useQuery({
+    queryKey: ['arbeitsplan-meta', shopId, year, month],
+    enabled: !!shopId,
+    queryFn: async (): Promise<TagMeta[]> => {
+      const start = `${year}-${pad2(month)}-01`;
+      const end = endOfMonth(year, month);
+      const endIso = `${year}-${pad2(month)}-${pad2(end.getDate())}`;
+      const { data, error } = await supabase
+        .from('arbeitsplan_tag_meta')
+        .select('shop_id, datum, wechselzeit')
+        .eq('shop_id', shopId)
+        .gte('datum', start)
+        .lte('datum', endIso);
+      if (error) throw error;
+      return (data ?? []) as TagMeta[];
+    },
+  });
+
+  const wechselzeitMap = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const t of tagMetas ?? []) m.set(t.datum, t.wechselzeit ?? '');
+    return m;
+  }, [tagMetas]);
+
+  const setWechselzeitMut = useMutation({
+    mutationFn: async (args: { datum: string; wechselzeit: string }) => {
+      const { error } = await supabase.rpc('set_arbeitsplan_wechselzeit', {
+        _profile_id: session.profile.id,
+        _shop_id: shopId,
+        _datum: args.datum,
+        _wechselzeit: args.wechselzeit,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['arbeitsplan-meta', shopId, year, month] });
+    },
+  });
 
   const setEintragMut = useMutation({
     mutationFn: async (args: { datum: string; schicht_nr: number; eintrag: string }) => {
@@ -267,10 +312,14 @@ export function ArbeitsplanPage() {
                     hours={hours}
                     s1={eintragMap.get(`${d.datum}|1`) ?? ''}
                     s2={eintragMap.get(`${d.datum}|2`) ?? ''}
+                    wechselzeit={wechselzeitMap.get(d.datum) ?? ''}
                     rightBorder={di < 6}
                     mitarbeiterListe={mitarbeiterListe}
                     onSave={(schicht_nr, eintrag) =>
                       setEintragMut.mutate({ datum: d.datum, schicht_nr, eintrag })
+                    }
+                    onSaveWechselzeit={(wz) =>
+                      setWechselzeitMut.mutate({ datum: d.datum, wechselzeit: wz })
                     }
                   />
                 );
@@ -301,9 +350,11 @@ interface DayCellProps {
   hours: { von: string; bis: string } | null;
   s1: string;
   s2: string;
+  wechselzeit: string;
   rightBorder: boolean;
   mitarbeiterListe: Profile[];
   onSave: (schicht_nr: number, eintrag: string) => void;
+  onSaveWechselzeit: (wz: string) => void;
 }
 
 function DayCell({
@@ -317,9 +368,11 @@ function DayCell({
   hours,
   s1,
   s2,
+  wechselzeit,
   rightBorder,
   mitarbeiterListe,
   onSave,
+  onSaveWechselzeit,
 }: DayCellProps) {
   return (
     <div
@@ -372,19 +425,75 @@ function DayCell({
             schichtLabel="Frühschicht"
           />
           {schichten === 2 && (
-            <NamePicker
-              value={s2}
-              onChange={(v) => onSave(2, v)}
-              placeholder="Spät"
-              canEdit={canEdit}
-              mitarbeiterListe={mitarbeiterListe}
-              datum={datum}
-              schichtLabel="Spätschicht"
-            />
+            <>
+              <WechselzeitField
+                value={wechselzeit}
+                canEdit={canEdit}
+                onSave={onSaveWechselzeit}
+              />
+              <NamePicker
+                value={s2}
+                onChange={(v) => onSave(2, v)}
+                placeholder="Spät"
+                canEdit={canEdit}
+                mitarbeiterListe={mitarbeiterListe}
+                datum={datum}
+                schichtLabel="Spätschicht"
+              />
+            </>
           )}
         </div>
       )}
     </div>
+  );
+}
+
+interface WechselzeitFieldProps {
+  value: string;
+  canEdit: boolean;
+  onSave: (wz: string) => void;
+}
+
+function WechselzeitField({ value, canEdit, onSave }: WechselzeitFieldProps) {
+  const [val, setVal] = useState(value);
+  useEffect(() => {
+    setVal(value);
+  }, [value]);
+  function commit() {
+    if (val.trim() === value.trim()) return;
+    onSave(val.trim());
+  }
+  if (!canEdit) {
+    if (!value) return null;
+    return (
+      <div
+        className="text-center text-[10px] mono py-0.5"
+        style={{ color: '#888' }}
+        title="Schichtwechsel-Zeit"
+      >
+        ↻ {value}
+      </div>
+    );
+  }
+  return (
+    <input
+      type="text"
+      value={val}
+      onChange={(e) => setVal(e.target.value)}
+      onBlur={commit}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
+      }}
+      placeholder="↻ Wechsel"
+      maxLength={10}
+      className="w-full px-2 py-0.5 text-[10px] mono rounded text-center"
+      style={{
+        background: 'transparent',
+        border: '1px dashed #2a2a2a',
+        color: value ? '#aaa' : '#555',
+      }}
+      title="Schichtwechsel-Zeit, z.B. '15:00'"
+    />
   );
 }
 
