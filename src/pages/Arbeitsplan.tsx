@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Layout } from '../components/Layout';
-import { useShops } from '../lib/queries';
+import { useProfiles, useShops } from '../lib/queries';
 import { useAuth } from '../lib/authStore';
 import { supabase } from '../lib/supabase';
-import { defaultHours, istGeschlossen, shopSchichten } from '../lib/shopConfig';
+import { defaultHours, farbeFuerEintrag, istGeschlossen, shopSchichten } from '../lib/shopConfig';
+import { firstName } from '../lib/types';
+import type { Profile } from '../lib/types';
 
 interface Eintrag {
   shop_id: string;
@@ -62,6 +64,11 @@ export function ArbeitsplanPage() {
   const heute = todayISO();
   const [year, setYear] = useState(() => Number(heute.slice(0, 4)));
   const [month, setMonth] = useState(() => Number(heute.slice(5, 7)));
+  const { data: profiles } = useProfiles();
+  const mitarbeiterListe = useMemo(
+    () => (profiles ?? []).filter((p) => p.aktiv && p.rolle !== 'admin'),
+    [profiles],
+  );
 
   const monthDays = useMemo(() => buildMonthDays(year, month), [year, month]);
   const firstDayWeekday = monthDays[0]?.wochentag ?? 0;
@@ -261,6 +268,7 @@ export function ArbeitsplanPage() {
                     s1={eintragMap.get(`${d.datum}|1`) ?? ''}
                     s2={eintragMap.get(`${d.datum}|2`) ?? ''}
                     rightBorder={di < 6}
+                    mitarbeiterListe={mitarbeiterListe}
                     onSave={(schicht_nr, eintrag) =>
                       setEintragMut.mutate({ datum: d.datum, schicht_nr, eintrag })
                     }
@@ -294,11 +302,12 @@ interface DayCellProps {
   s1: string;
   s2: string;
   rightBorder: boolean;
+  mitarbeiterListe: Profile[];
   onSave: (schicht_nr: number, eintrag: string) => void;
 }
 
 function DayCell({
-  datum: _datum,
+  datum,
   tag,
   weekend,
   isToday,
@@ -309,23 +318,9 @@ function DayCell({
   s1,
   s2,
   rightBorder,
+  mitarbeiterListe,
   onSave,
 }: DayCellProps) {
-  const [val1, setVal1] = useState(s1);
-  const [val2, setVal2] = useState(s2);
-
-  useEffect(() => {
-    setVal1(s1);
-  }, [s1]);
-  useEffect(() => {
-    setVal2(s2);
-  }, [s2]);
-
-  function commit(schicht_nr: number, current: string, original: string) {
-    if (current === original) return;
-    onSave(schicht_nr, current);
-  }
-
   return (
     <div
       style={{
@@ -352,7 +347,7 @@ function DayCell({
           <span
             className="text-[10px] font-normal mono"
             style={{ color: '#555' }}
-            title={`Oeffnungszeit ${hours.von}–${hours.bis}`}
+            title={`Öffnungszeit ${hours.von}–${hours.bis}`}
           >
             {hours.von}–{hours.bis}
           </span>
@@ -366,60 +361,199 @@ function DayCell({
           Geschlossen
         </div>
       ) : (
-        <div className="px-1.5 py-1 space-y-1">
-          {canEdit ? (
-            <>
-              <input
-                type="text"
-                value={val1}
-                onChange={(e) => setVal1(e.target.value)}
-                onBlur={() => commit(1, val1, s1)}
-                placeholder={schichten === 1 ? 'Schicht' : 'Früh'}
-                maxLength={40}
-                className="w-full px-2 py-1 text-[13px] mono rounded"
-                style={{
-                  background: '#0a0a0a',
-                  border: '1px solid #2a2a2a',
-                  color: '#f5f5f5',
-                }}
-              />
-              {schichten === 2 && (
-                <input
-                  type="text"
-                  value={val2}
-                  onChange={(e) => setVal2(e.target.value)}
-                  onBlur={() => commit(2, val2, s2)}
-                  placeholder="Spät"
-                  maxLength={40}
-                  className="w-full px-2 py-1 text-[13px] mono rounded"
-                  style={{
-                    background: '#0a0a0a',
-                    border: '1px solid #2a2a2a',
-                    color: '#f5f5f5',
-                  }}
-                />
-              )}
-            </>
-          ) : (
-            <>
-              <div
-                className="px-2 py-1 text-[13px] mono rounded min-h-[26px]"
-                style={{ background: '#0a0a0a', color: '#f5f5f5' }}
-              >
-                {s1 || <span style={{ color: '#444' }}>—</span>}
-              </div>
-              {schichten === 2 && (
-                <div
-                  className="px-2 py-1 text-[13px] mono rounded min-h-[26px]"
-                  style={{ background: '#0a0a0a', color: '#f5f5f5' }}
-                >
-                  {s2 || <span style={{ color: '#444' }}>—</span>}
-                </div>
-              )}
-            </>
+        <div className="px-1.5 py-1.5 space-y-1">
+          <NamePicker
+            value={s1}
+            onChange={(v) => onSave(1, v)}
+            placeholder={schichten === 1 ? 'Schicht' : 'Früh'}
+            canEdit={canEdit}
+            mitarbeiterListe={mitarbeiterListe}
+            datum={datum}
+            schichtLabel="Frühschicht"
+          />
+          {schichten === 2 && (
+            <NamePicker
+              value={s2}
+              onChange={(v) => onSave(2, v)}
+              placeholder="Spät"
+              canEdit={canEdit}
+              mitarbeiterListe={mitarbeiterListe}
+              datum={datum}
+              schichtLabel="Spätschicht"
+            />
           )}
         </div>
       )}
+    </div>
+  );
+}
+
+interface NamePickerProps {
+  value: string;
+  onChange: (v: string) => void;
+  placeholder: string;
+  canEdit: boolean;
+  mitarbeiterListe: Profile[];
+  datum: string;
+  schichtLabel: string;
+}
+
+function NamePicker({
+  value,
+  onChange,
+  placeholder,
+  canEdit,
+  mitarbeiterListe,
+  datum,
+  schichtLabel,
+}: NamePickerProps) {
+  const [open, setOpen] = useState(false);
+  const farbe = farbeFuerEintrag(value);
+
+  const chipStyle: React.CSSProperties = value
+    ? {
+        background: farbe?.bg ?? '#1c1c1c',
+        border: `1px solid ${farbe?.border ?? '#2a2a2a'}`,
+        color: farbe?.text ?? '#f5f5f5',
+      }
+    : {
+        background: '#0a0a0a',
+        border: '1px dashed #2a2a2a',
+        color: '#555',
+      };
+
+  if (!canEdit) {
+    return (
+      <div
+        className="px-2 py-1 text-[13px] mono rounded min-h-[26px] truncate"
+        style={chipStyle}
+        title={value || ''}
+      >
+        {value || <span style={{ color: '#444' }}>—</span>}
+      </div>
+    );
+  }
+
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className="w-full px-2 py-1 text-[13px] mono rounded truncate text-left transition-colors hover:brightness-125"
+        style={chipStyle}
+        title={value || placeholder}
+      >
+        {value || <span style={{ color: '#666' }}>{placeholder}</span>}
+      </button>
+      {open && (
+        <NamePickerModal
+          current={value}
+          onSelect={(v) => {
+            onChange(v);
+            setOpen(false);
+          }}
+          onClose={() => setOpen(false)}
+          mitarbeiterListe={mitarbeiterListe}
+          datum={datum}
+          schichtLabel={schichtLabel}
+        />
+      )}
+    </>
+  );
+}
+
+interface NamePickerModalProps {
+  current: string;
+  onSelect: (value: string) => void;
+  onClose: () => void;
+  mitarbeiterListe: Profile[];
+  datum: string;
+  schichtLabel: string;
+}
+
+function NamePickerModal({
+  current,
+  onSelect,
+  onClose,
+  mitarbeiterListe,
+  datum,
+  schichtLabel,
+}: NamePickerModalProps) {
+  const [custom, setCustom] = useState(current);
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      style={{ background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)' }}
+      onClick={onClose}
+    >
+      <div
+        className="bg-surface border border-border rounded-xl p-5 w-full max-w-md space-y-4 shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div>
+          <h3 className="text-base font-bold">{schichtLabel}</h3>
+          <p className="text-xs text-muted mt-0.5 mono">{datum}</p>
+        </div>
+
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+          {mitarbeiterListe.map((p) => {
+            const fn = firstName(p.name);
+            const f = farbeFuerEintrag(fn);
+            return (
+              <button
+                key={p.id}
+                type="button"
+                onClick={() => onSelect(fn)}
+                className="px-3 py-2 rounded text-sm font-semibold text-left transition-all hover:brightness-125"
+                style={{
+                  background: f?.bg ?? '#1c1c1c',
+                  border: `1px solid ${f?.border ?? '#2a2a2a'}`,
+                  color: f?.text ?? '#f5f5f5',
+                }}
+              >
+                {fn}
+              </button>
+            );
+          })}
+        </div>
+
+        <div className="border-t border-border-soft pt-3 space-y-2">
+          <div className="text-[11px] uppercase tracking-wider text-muted">
+            Eigener Eintrag (z.B. „Soner ab 18:00")
+          </div>
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={custom}
+              onChange={(e) => setCustom(e.target.value)}
+              maxLength={40}
+              placeholder="Freitext …"
+              className="field-input text-sm flex-1"
+              autoFocus
+            />
+            <button
+              type="button"
+              onClick={() => onSelect(custom)}
+              className="btn-primary text-sm px-4"
+            >
+              Übernehmen
+            </button>
+          </div>
+        </div>
+
+        <div className="flex justify-between items-center pt-1">
+          <button
+            type="button"
+            onClick={() => onSelect('')}
+            className="text-xs text-minus hover:underline"
+          >
+            × Feld leeren
+          </button>
+          <button type="button" onClick={onClose} className="btn-ghost text-xs px-3 py-1.5">
+            Abbrechen
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
