@@ -190,6 +190,64 @@ export function ArbeitsplanPage() {
     return w;
   }, [monthDays, firstDayWeekday]);
 
+  // Stunden-Summen pro Mitarbeiter fuer den aktuellen Monat berechnen.
+  const stundenSumme = useMemo(() => {
+    const shop = shops?.find((s) => s.id === shopId);
+    const shopKurz = shop?.kurz ?? '';
+    const schichten = shopSchichten(shopKurz);
+    const summe = new Map<string, number>(); // Vorname -> Stunden
+    const ungenau = new Map<string, number>(); // Eintraege wie 'Soner ab 18:00'
+
+    function addH(name: string, h: number, isFreeText = false) {
+      if (!name) return;
+      const cleaned = name.trim();
+      const first = cleaned.split(/[\s,]+/)[0] ?? cleaned;
+      const cap = first.charAt(0).toUpperCase() + first.slice(1).toLowerCase();
+      if (isFreeText) {
+        ungenau.set(cap, (ungenau.get(cap) ?? 0) + h);
+      } else {
+        summe.set(cap, (summe.get(cap) ?? 0) + h);
+      }
+    }
+    function parseHHMM(s: string): number | null {
+      const m = s.match(/^(\d{1,2}):(\d{2})$/);
+      if (!m) return null;
+      return Number(m[1]) + Number(m[2]) / 60;
+    }
+    function isPureName(s: string): boolean {
+      // Nur Buchstaben, keine Zahlen, kein "ab", "von", "bis"
+      return /^[A-Za-zäöüÄÖÜß-]+$/.test(s.trim());
+    }
+
+    for (const d of monthDays) {
+      if (istGeschlossen(d.datum)) continue;
+      const hrs = defaultHours(shopKurz, d.wochentag);
+      if (!hrs) continue;
+      const tagesDauer = (parseHHMM(hrs.bis) ?? 0) - (parseHHMM(hrs.von) ?? 0);
+      const s1 = eintragMap.get(`${d.datum}|1`)?.trim() ?? '';
+      const s2 = eintragMap.get(`${d.datum}|2`)?.trim() ?? '';
+      const wz = wechselzeitMap.get(d.datum)?.trim() || DEFAULT_WECHSELZEIT;
+
+      if (schichten === 1 || s1 === s2 || (s1 && !s2) || (!s1 && s2)) {
+        const name = s1 || s2;
+        if (name) {
+          if (isPureName(name)) addH(name, tagesDauer);
+          else addH(name, tagesDauer, true);
+        }
+        continue;
+      }
+      // Geteilt
+      const wzNum = parseHHMM(wz) ?? parseHHMM(DEFAULT_WECHSELZEIT) ?? 17;
+      const vonNum = parseHHMM(hrs.von) ?? 0;
+      const bisNum = parseHHMM(hrs.bis) ?? 0;
+      const frueh = Math.max(0, wzNum - vonNum);
+      const spaet = Math.max(0, bisNum - wzNum);
+      if (s1) addH(s1, frueh, !isPureName(s1));
+      if (s2) addH(s2, spaet, !isPureName(s2));
+    }
+    return { summe, ungenau };
+  }, [shopId, shops, monthDays, eintragMap, wechselzeitMap]);
+
   return (
     <Layout>
       <div className="max-w-7xl mx-auto px-3 sm:px-6 py-5 space-y-4">
@@ -258,6 +316,7 @@ export function ArbeitsplanPage() {
           </div>
         )}
 
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_220px] gap-3 items-start">
         <div className="bg-surface border border-border rounded-lg overflow-hidden">
           <div className="grid grid-cols-7 bg-surface-2 text-[11px] uppercase tracking-wider text-muted">
             {WOCHENTAGE.map((wt, i) => (
@@ -328,6 +387,9 @@ export function ArbeitsplanPage() {
           ))}
         </div>
 
+        <StundenSidebar stunden={stundenSumme} mitarbeiterListe={mitarbeiterListe} />
+        </div>
+
         <div className="text-[11px] text-muted">
           Frühschicht oben, Spätschicht unten. Anfangsbuchstabe reicht (z.B. „E" für Erdem).
           {canEdit ? (
@@ -336,6 +398,89 @@ export function ArbeitsplanPage() {
         </div>
       </div>
     </Layout>
+  );
+}
+
+interface StundenSidebarProps {
+  stunden: { summe: Map<string, number>; ungenau: Map<string, number> };
+  mitarbeiterListe: Profile[];
+}
+
+function StundenSidebar({ stunden, mitarbeiterListe }: StundenSidebarProps) {
+  // Mitarbeiter mit Stunden absteigend sortieren
+  const eintraege = useMemo(() => {
+    const namen = new Set<string>([
+      ...stunden.summe.keys(),
+      ...stunden.ungenau.keys(),
+      ...mitarbeiterListe.map((p) => firstName(p.name)),
+    ]);
+    return Array.from(namen)
+      .map((n) => ({
+        name: n,
+        std: stunden.summe.get(n) ?? 0,
+        unsicher: stunden.ungenau.get(n) ?? 0,
+      }))
+      .filter((e) => e.std > 0 || e.unsicher > 0)
+      .sort((a, b) => b.std + b.unsicher - (a.std + a.unsicher));
+  }, [stunden, mitarbeiterListe]);
+
+  if (eintraege.length === 0) {
+    return (
+      <div className="bg-surface border border-border rounded-lg p-3 text-[11px] text-muted">
+        Noch keine Eintraege fuer diesen Monat.
+      </div>
+    );
+  }
+  const total = eintraege.reduce((a, e) => a + e.std + e.unsicher, 0);
+  return (
+    <div className="bg-surface border border-border rounded-lg p-3 space-y-2 lg:sticky lg:top-2">
+      <div className="text-[10px] mono uppercase tracking-wider text-muted">
+        Stunden im Monat
+      </div>
+      <div className="space-y-1.5">
+        {eintraege.map((e) => {
+          const f = farbeFuerEintrag(e.name);
+          const gesamt = e.std + e.unsicher;
+          return (
+            <div
+              key={e.name}
+              className="flex items-center justify-between gap-2 rounded px-2 py-1.5"
+              style={{
+                background: f?.bg ?? '#1c1c1c',
+                border: `1px solid ${f?.border ?? '#2a2a2a'}`,
+              }}
+            >
+              <span
+                className="text-sm font-semibold"
+                style={{ color: f?.text ?? '#f5f5f5' }}
+              >
+                {e.name}
+              </span>
+              <span
+                className="mono text-sm font-bold"
+                style={{ color: f?.text ?? '#f5f5f5' }}
+                title={
+                  e.unsicher > 0
+                    ? `${e.std.toFixed(0)} h sicher + ${e.unsicher.toFixed(0)} h ungenau (Freitext)`
+                    : undefined
+                }
+              >
+                {gesamt.toFixed(0)} h
+                {e.unsicher > 0 && (
+                  <span className="text-[10px] ml-0.5 opacity-70">~</span>
+                )}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+      <div
+        className="text-[10px] mono text-muted text-right pt-1"
+        style={{ borderTop: '1px solid #1f1f1f' }}
+      >
+        Gesamt {total.toFixed(0)} h
+      </div>
+    </div>
   );
 }
 
@@ -391,15 +536,25 @@ function DayCell({
       <div
         className="px-2 py-1 text-[11px] font-bold mono flex items-center justify-between gap-1"
         style={{
-          color: geschlossen ? '#f87171' : isToday ? '#d4ff00' : weekend ? '#fbbf24' : '#888',
-          borderBottom: '1px solid #1f1f1f',
+          background: isToday
+            ? '#d4ff00'
+            : geschlossen
+              ? '#5a1f1f'
+              : '#f3f3f3',
+          color: isToday
+            ? '#0a0a0a'
+            : geschlossen
+              ? '#fca5a5'
+              : weekend
+                ? '#7a5500'
+                : '#1a1a1a',
         }}
       >
-        <span>{tag}.</span>
+        <span>{tag}.{pad2(Number(datum.slice(5, 7)))}.</span>
         {!geschlossen && hours && (
           <span
             className="text-[10px] font-normal mono"
-            style={{ color: '#555' }}
+            style={{ color: isToday ? '#0a0a0a' : '#666' }}
             title={`Öffnungszeit ${hours.von}–${hours.bis}`}
           >
             {hours.von}–{hours.bis}
@@ -521,22 +676,17 @@ interface WechselzeitFieldProps {
   onSave: (wz: string) => void;
 }
 
+// Auswaehlbare Schichtwechsel-Stunden (nur volle Stunden)
+const WECHSEL_STUNDEN = Array.from({ length: 17 }, (_, i) => {
+  const h = 6 + i; // 06:00 ... 22:00
+  return `${h.toString().padStart(2, '0')}:00`;
+});
+
 function WechselzeitField({ value, canEdit, onSave }: WechselzeitFieldProps) {
   // Wenn nichts in der DB steht, zeigen wir den Default (17:00) als Anzeige
   // ohne ihn aktiv zu speichern. Erst wenn der User editiert + abweicht,
-  // wird gespeichert. Leeren = wieder Default-Anzeige.
+  // wird gespeichert.
   const display = value.trim() || DEFAULT_WECHSELZEIT;
-  const [val, setVal] = useState(display);
-  useEffect(() => {
-    setVal(display);
-  }, [display]);
-  function commit() {
-    const trimmed = val.trim();
-    // wenn der User wieder den Default eintippt -> speichern als leer
-    const toSave = trimmed === DEFAULT_WECHSELZEIT ? '' : trimmed;
-    if (toSave === value.trim()) return;
-    onSave(toSave);
-  }
   if (!canEdit) {
     return (
       <div
@@ -551,23 +701,28 @@ function WechselzeitField({ value, canEdit, onSave }: WechselzeitFieldProps) {
   return (
     <div className="flex items-center justify-center gap-1">
       <span className="text-[10px] mono" style={{ color: '#666' }}>↻</span>
-      <input
-        type="time"
-        value={val}
-        onChange={(e) => setVal(e.target.value)}
-        onBlur={commit}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
+      <select
+        value={display}
+        onChange={(e) => {
+          const next = e.target.value;
+          const toSave = next === DEFAULT_WECHSELZEIT ? '' : next;
+          if (toSave !== value.trim()) onSave(toSave);
         }}
-        className="px-1 py-0 text-[10px] mono rounded text-center"
+        className="px-1 py-0 text-[10px] mono rounded text-center cursor-pointer"
         style={{
           background: 'transparent',
           border: '1px dashed #2a2a2a',
           color: value ? '#fbbf24' : '#888',
-          width: 70,
+          width: 64,
         }}
         title="Schichtwechsel-Uhrzeit (Standard 17:00)"
-      />
+      >
+        {WECHSEL_STUNDEN.map((h) => (
+          <option key={h} value={h}>
+            {h}
+          </option>
+        ))}
+      </select>
     </div>
   );
 }

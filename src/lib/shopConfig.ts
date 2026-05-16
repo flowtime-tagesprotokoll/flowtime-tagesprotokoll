@@ -90,15 +90,15 @@ export interface NameFarbe {
 }
 
 const RAW_FARBEN: Record<string, NameFarbe> = {
-  Soner:   { bg: '#2d3e54', border: '#4a6480', text: '#9cb6cf' }, // slate-blau
-  Mehdi:   { bg: '#2e3e2e', border: '#4c6c4c', text: '#a4c2a4' }, // sage
-  Oskar:   { bg: '#4a3a2d', border: '#6e5a45', text: '#c8a98a' }, // warmes braun
-  Erdem:   { bg: '#3d2d40', border: '#5e4a64', text: '#b89bbf' }, // gedaempftes plum
-  Vedat:   { bg: '#2d3e3a', border: '#4c6660', text: '#9fbeb4' }, // teal-sage
-  Riadh:   { bg: '#3e3a2d', border: '#615b46', text: '#b8af8c' }, // olive
-  Elhadji: { bg: '#3a2d2d', border: '#5c4848', text: '#b89b9b' }, // rose-braun
-  Mamadou: { bg: '#3a2d2d', border: '#5c4848', text: '#b89b9b' }, // alias zu Elhadji
-  Tamer:   { bg: '#2d2e44', border: '#494b6a', text: '#9fa1c2' }, // lavendel-slate
+  Soner:   { bg: '#1f3a55', border: '#3b5e80', text: '#8eb5d4' }, // klares dunkles Blau
+  Mehdi:   { bg: '#2a4827', border: '#48693f', text: '#a8c896' }, // dunkles Waldgruen
+  Vedat:   { bg: '#52273a', border: '#7c4458', text: '#d1909e' }, // gedaempftes Burgund
+  Oskar:   { bg: '#4d3a1f', border: '#735a3a', text: '#cca97a' }, // tiefer Bernstein
+  Erdem:   { bg: '#3b2849', border: '#5c426d', text: '#b69bd1' }, // dunkles Lila
+  Riadh:   { bg: '#1d4847', border: '#386b6a', text: '#86bab8' }, // dunkles Teal
+  Elhadji: { bg: '#54331f', border: '#7a5238', text: '#d6a075' }, // Terracotta
+  Mamadou: { bg: '#54331f', border: '#7a5238', text: '#d6a075' }, // alias zu Elhadji
+  Tamer:   { bg: '#2a2a4f', border: '#454573', text: '#9a9ad0' }, // Indigo
 };
 
 export const FARBE_FALLBACK: NameFarbe = {
