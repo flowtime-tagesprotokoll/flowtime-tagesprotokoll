@@ -343,6 +343,7 @@ export function ArbeitsplanPage() {
                 className="px-2 py-2.5 text-center"
                 style={{
                   color: i >= 5 ? '#b08850' : '#888',
+                  borderRight: i < 6 ? '7px solid #0a0a0a' : 'none',
                 }}
               >
                 {wt}
@@ -368,7 +369,7 @@ export function ArbeitsplanPage() {
                       key={di}
                       style={{
                         background: '#0a0a0a',
-                        borderRight: di < 6 ? '1px solid #1f1f1f' : 'none',
+                        borderRight: di < 6 ? '7px solid #0a0a0a' : 'none',
                       }}
                     />
                   );
@@ -556,7 +557,7 @@ function DayCell({
   return (
     <div
       style={{
-        borderRight: rightBorder ? '1px solid #1f1f1f' : 'none',
+        borderRight: rightBorder ? '7px solid #0a0a0a' : 'none',
         borderLeft: `3px solid ${akzentLinks}`,
         background: isToday ? 'rgba(212,255,0,0.025)' : '#131313',
         minHeight: 92,
