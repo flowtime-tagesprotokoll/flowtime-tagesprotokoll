@@ -10,6 +10,7 @@ import { DokuberichtPage } from './pages/Dokubericht';
 import { WartungPage } from './pages/Wartung';
 import { AdminMitarbeiterPage } from './pages/AdminMitarbeiter';
 import { AdminShopsPage } from './pages/AdminShops';
+import { ArbeitsplanPage } from './pages/Arbeitsplan';
 import { useAuth } from './lib/authStore';
 import { checkForUpdates } from './lib/updater';
 import { SingleInstanceGate } from './components/SingleInstance';
@@ -132,6 +133,14 @@ export default function App() {
             element={
               <RequireAuth>
                 <AdminShopsPage />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/arbeitsplan"
+            element={
+              <RequireAuth>
+                <ArbeitsplanPage />
               </RequireAuth>
             }
           />

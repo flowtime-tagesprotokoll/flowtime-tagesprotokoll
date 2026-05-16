@@ -18,6 +18,7 @@ export interface Profile {
   reihenfolge: number;
   created_at: string;
   pin_hash: string | null;
+  darf_arbeitsplan?: boolean;
 }
 
 export interface Protokoll {

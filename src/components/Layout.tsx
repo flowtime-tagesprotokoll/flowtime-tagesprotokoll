@@ -55,6 +55,15 @@ export function Layout({ children, rightSlot }: LayoutProps) {
           {session?.kind === 'admin' && <AdminMenu />}
           {session && (
             <>
+              <Link
+                to="/arbeitsplan"
+                className="rounded-lg bg-surface-2 border border-border hover:border-accent hover:text-accent text-text font-semibold text-xs px-3 py-1.5 transition-colors flex items-center gap-1.5"
+                title="Monatlicher Arbeitsplan"
+              >
+                <span>📅</span>
+                <span className="hidden sm:inline">Arbeitsplan</span>
+                <span className="sm:hidden">Plan</span>
+              </Link>
               <button
                 type="button"
                 onClick={() => setShowDoku(true)}
