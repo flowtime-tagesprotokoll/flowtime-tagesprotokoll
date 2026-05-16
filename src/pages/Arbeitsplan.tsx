@@ -317,15 +317,14 @@ export function ArbeitsplanPage() {
         )}
 
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_220px] gap-3 items-start">
-        <div className="bg-surface border border-border rounded-lg overflow-hidden">
-          <div className="grid grid-cols-7 bg-surface-2 text-[11px] uppercase tracking-wider text-muted">
+        <div className="bg-surface/40 border border-border-soft rounded-lg overflow-hidden">
+          <div className="grid grid-cols-7 text-[10px] uppercase tracking-widest text-muted">
             {WOCHENTAGE.map((wt, i) => (
               <div
                 key={wt}
                 className="px-2 py-2 text-center"
                 style={{
-                  borderRight: i < 6 ? '1px solid #1f1f1f' : 'none',
-                  color: i >= 5 ? '#fbbf24' : undefined,
+                  color: i >= 5 ? '#b08850' : '#666',
                 }}
               >
                 {wt}
@@ -337,7 +336,7 @@ export function ArbeitsplanPage() {
             <div
               key={wi}
               className="grid grid-cols-7"
-              style={{ borderTop: '1px solid #1f1f1f' }}
+              style={{ borderTop: '1px solid #1d1d1d' }}
             >
               {woche.map((d, di) => {
                 if (!d) {
@@ -426,39 +425,36 @@ function StundenSidebar({ stunden, mitarbeiterListe }: StundenSidebarProps) {
 
   if (eintraege.length === 0) {
     return (
-      <div className="bg-surface border border-border rounded-lg p-3 text-[11px] text-muted">
+      <div className="bg-surface/40 border border-border-soft rounded-lg p-3 text-[11px] text-muted">
         Noch keine Eintraege fuer diesen Monat.
       </div>
     );
   }
   const total = eintraege.reduce((a, e) => a + e.std + e.unsicher, 0);
   return (
-    <div className="bg-surface border border-border rounded-lg p-3 space-y-2 lg:sticky lg:top-2">
+    <div className="bg-surface/40 border border-border-soft rounded-lg p-3 space-y-2 lg:sticky lg:top-2">
       <div className="text-[10px] mono uppercase tracking-wider text-muted">
         Stunden im Monat
       </div>
-      <div className="space-y-1.5">
+      <div className="space-y-1">
         {eintraege.map((e) => {
           const f = farbeFuerEintrag(e.name);
           const gesamt = e.std + e.unsicher;
           return (
             <div
               key={e.name}
-              className="flex items-center justify-between gap-2 rounded px-2 py-1.5"
-              style={{
-                background: f?.bg ?? '#1c1c1c',
-                border: `1px solid ${f?.border ?? '#2a2a2a'}`,
-              }}
+              className="flex items-center justify-between gap-2 px-2 py-1.5 rounded"
+              style={{ borderLeft: `3px solid ${f?.text ?? '#888'}` }}
             >
               <span
                 className="text-sm font-semibold"
-                style={{ color: f?.text ?? '#f5f5f5' }}
+                style={{ color: f?.text ?? '#e5e5e5' }}
               >
                 {e.name}
               </span>
               <span
-                className="mono text-sm font-bold"
-                style={{ color: f?.text ?? '#f5f5f5' }}
+                className="mono text-sm tabular-nums"
+                style={{ color: f?.text ?? '#e5e5e5' }}
                 title={
                   e.unsicher > 0
                     ? `${e.std.toFixed(0)} h sicher + ${e.unsicher.toFixed(0)} h ungenau (Freitext)`
@@ -475,8 +471,8 @@ function StundenSidebar({ stunden, mitarbeiterListe }: StundenSidebarProps) {
         })}
       </div>
       <div
-        className="text-[10px] mono text-muted text-right pt-1"
-        style={{ borderTop: '1px solid #1f1f1f' }}
+        className="text-[10px] mono text-muted text-right pt-1.5"
+        style={{ borderTop: '1px solid #232323' }}
       >
         Gesamt {total.toFixed(0)} h
       </div>
@@ -519,52 +515,56 @@ function DayCell({
   onSave,
   onSaveWechselzeit,
 }: DayCellProps) {
+  // Datum als kurze Form "Mi · 14.05."
+  const wtNamen = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'];
+  const date = new Date(datum + 'T00:00:00');
+  const wt = (date.getDay() + 6) % 7;
+  const datumKurz = `${wtNamen[wt]}·${tag}.${pad2(Number(datum.slice(5, 7)))}.`;
+
+  // Akzent-Linie links: heute lime, geschlossen rot, wochenende dezent gold, sonst nichts
+  const akzentLinks = isToday
+    ? '#d4ff00'
+    : geschlossen
+      ? '#a85555'
+      : weekend
+        ? 'rgba(180,140,80,0.35)'
+        : 'transparent';
+
   return (
     <div
       style={{
         borderRight: rightBorder ? '1px solid #1f1f1f' : 'none',
-        background: geschlossen
-          ? 'rgba(248,113,113,0.04)'
-          : isToday
-            ? 'rgba(212,255,0,0.05)'
-            : weekend
-              ? 'rgba(251,191,36,0.04)'
-              : '#141414',
-        minHeight: 84,
+        borderLeft: `3px solid ${akzentLinks}`,
+        background: isToday ? 'rgba(212,255,0,0.025)' : '#131313',
+        minHeight: 92,
+        display: 'flex',
+        flexDirection: 'column',
       }}
     >
       <div
-        className="px-2 py-1 text-[11px] font-bold mono flex items-center justify-between gap-1"
+        className="px-2 pt-1.5 pb-1 text-[10px] mono flex items-center justify-between gap-1 select-none"
         style={{
-          background: isToday
+          color: isToday
             ? '#d4ff00'
             : geschlossen
-              ? '#5a1f1f'
-              : '#f3f3f3',
-          color: isToday
-            ? '#0a0a0a'
-            : geschlossen
-              ? '#fca5a5'
+              ? '#a85555'
               : weekend
-                ? '#7a5500'
-                : '#1a1a1a',
+                ? '#b08850'
+                : '#666',
+          letterSpacing: '0.04em',
         }}
       >
-        <span>{tag}.{pad2(Number(datum.slice(5, 7)))}.</span>
+        <span>{datumKurz}</span>
         {!geschlossen && hours && (
-          <span
-            className="text-[10px] font-normal mono"
-            style={{ color: isToday ? '#0a0a0a' : '#666' }}
-            title={`Öffnungszeit ${hours.von}–${hours.bis}`}
-          >
+          <span style={{ color: '#444' }} title={`Öffnungszeit ${hours.von}–${hours.bis}`}>
             {hours.von}–{hours.bis}
           </span>
         )}
       </div>
       {geschlossen ? (
         <div
-          className="px-2 py-3 text-center text-[12px] font-bold uppercase tracking-wider"
-          style={{ color: '#f87171' }}
+          className="flex-1 flex items-center justify-center text-[11px] uppercase tracking-widest font-semibold"
+          style={{ color: '#a85555' }}
         >
           Geschlossen
         </div>
@@ -622,27 +622,27 @@ function DayBody({
   if (same) {
     const value = s1.trim() || s2.trim();
     return (
-      <div className="px-1.5 py-1.5">
+      <div className="flex-1 flex flex-col">
         <NamePicker
           value={value}
           onChange={(v) => {
             onSave(1, v);
             if (schichten === 2) onSave(2, v);
           }}
-          placeholder="Mitarbeiter wählen"
+          placeholder="—"
           canEdit={canEdit}
           mitarbeiterListe={mitarbeiterListe}
           datum={datum}
           schichtLabel="Ganztags"
-          tall
+          variant="full"
         />
       </div>
     );
   }
 
-  // Geteilte Schicht: Früh + Wechselzeit + Spät
+  // Geteilte Schicht: zwei Hälften, dazwischen Wechselzeit
   return (
-    <div className="px-1.5 py-1.5 space-y-1">
+    <div className="flex-1 flex flex-col">
       <NamePicker
         value={s1}
         onChange={(v) => onSave(1, v)}
@@ -651,6 +651,7 @@ function DayBody({
         mitarbeiterListe={mitarbeiterListe}
         datum={datum}
         schichtLabel="Frühschicht"
+        variant="half"
       />
       <WechselzeitField
         value={wechselzeit}
@@ -665,6 +666,7 @@ function DayBody({
         mitarbeiterListe={mitarbeiterListe}
         datum={datum}
         schichtLabel="Spätschicht"
+        variant="half"
       />
     </div>
   );
@@ -690,17 +692,19 @@ function WechselzeitField({ value, canEdit, onSave }: WechselzeitFieldProps) {
   if (!canEdit) {
     return (
       <div
-        className="text-center text-[10px] mono"
-        style={{ color: value ? '#fbbf24' : '#555' }}
+        className="text-center text-[10px] mono py-0.5"
+        style={{
+          color: value ? '#c9a76b' : '#555',
+          letterSpacing: '0.05em',
+        }}
         title="Schichtwechsel-Uhrzeit"
       >
-        ↻ {display}
+        {display}
       </div>
     );
   }
   return (
-    <div className="flex items-center justify-center gap-1">
-      <span className="text-[10px] mono" style={{ color: '#666' }}>↻</span>
+    <div className="flex items-center justify-center">
       <select
         value={display}
         onChange={(e) => {
@@ -708,12 +712,10 @@ function WechselzeitField({ value, canEdit, onSave }: WechselzeitFieldProps) {
           const toSave = next === DEFAULT_WECHSELZEIT ? '' : next;
           if (toSave !== value.trim()) onSave(toSave);
         }}
-        className="px-1 py-0 text-[10px] mono rounded text-center cursor-pointer"
+        className="px-1 py-0 text-[10px] mono cursor-pointer text-center bg-transparent border-0 rounded"
         style={{
-          background: 'transparent',
-          border: '1px dashed #2a2a2a',
-          color: value ? '#fbbf24' : '#888',
-          width: 64,
+          color: value ? '#c9a76b' : '#666',
+          letterSpacing: '0.05em',
         }}
         title="Schichtwechsel-Uhrzeit (Standard 17:00)"
       >
@@ -735,8 +737,8 @@ interface NamePickerProps {
   mitarbeiterListe: Profile[];
   datum: string;
   schichtLabel: string;
-  /** Wenn true, wird der Chip groesser dargestellt (Ganztags). */
-  tall?: boolean;
+  /** 'full' = ganze Tageszelle fuellen (Ganztags); 'half' = obere/untere Haelfte */
+  variant: 'full' | 'half';
 }
 
 function NamePicker({
@@ -747,48 +749,58 @@ function NamePicker({
   mitarbeiterListe,
   datum,
   schichtLabel,
-  tall,
+  variant,
 }: NamePickerProps) {
   const [open, setOpen] = useState(false);
   const farbe = farbeFuerEintrag(value);
 
-  const chipStyle: React.CSSProperties = value
-    ? {
-        background: farbe?.bg ?? '#1c1c1c',
-        border: `1px solid ${farbe?.border ?? '#2a2a2a'}`,
-        color: farbe?.text ?? '#f5f5f5',
-      }
-    : {
-        background: '#0a0a0a',
-        border: '1px dashed #2a2a2a',
-        color: '#555',
-      };
-  const heightCls = tall ? 'min-h-[56px]' : 'min-h-[26px]';
-  const padCls = tall ? 'px-3 py-3' : 'px-2 py-1';
-  const fontCls = tall ? 'text-[15px] font-semibold' : 'text-[13px]';
+  // Sehr ruhige Darstellung: kein Border, kein Chip — die Hintergrundfarbe ist
+  // ein dezenter Tint der Mitarbeiterfarbe; der Name selbst ist im jeweils
+  // helleren Akzent geschrieben.
+  const bg = value && farbe
+    ? hexToRgba(farbe.text, variant === 'full' ? 0.08 : 0.07)
+    : 'transparent';
+  const textColor = value ? (farbe?.text ?? '#e5e5e5') : '#555';
+
+  const baseCls =
+    variant === 'full'
+      ? 'flex-1 px-2 flex items-center justify-center text-[15px] font-semibold tracking-wide'
+      : 'flex-1 px-2 flex items-center text-[13px] font-medium';
+  const sharedStyle: React.CSSProperties = {
+    background: bg,
+    color: textColor,
+  };
 
   if (!canEdit) {
     return (
-      <div
-        className={`${padCls} ${fontCls} mono rounded ${heightCls} truncate flex items-center`}
-        style={chipStyle}
-        title={value || ''}
-      >
-        {value || <span style={{ color: '#444' }}>—</span>}
+      <div className={baseCls} style={sharedStyle} title={value || ''}>
+        <span className="truncate">{value || ''}</span>
       </div>
     );
   }
-
   return (
     <>
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className={`w-full ${padCls} ${fontCls} mono rounded ${heightCls} truncate text-left transition-colors hover:brightness-125 flex items-center`}
-        style={chipStyle}
+        className={`${baseCls} w-full text-left transition-colors`}
+        style={{
+          ...sharedStyle,
+          cursor: 'pointer',
+        }}
+        onMouseEnter={(e) => {
+          (e.currentTarget as HTMLElement).style.background = value && farbe
+            ? hexToRgba(farbe.text, 0.14)
+            : 'rgba(255,255,255,0.04)';
+        }}
+        onMouseLeave={(e) => {
+          (e.currentTarget as HTMLElement).style.background = bg;
+        }}
         title={value || placeholder}
       >
-        {value || <span style={{ color: '#666' }}>{placeholder}</span>}
+        <span className="truncate w-full">
+          {value || <span style={{ color: '#444' }}>{placeholder}</span>}
+        </span>
       </button>
       {open && (
         <NamePickerDropdown
@@ -805,6 +817,16 @@ function NamePicker({
       )}
     </>
   );
+}
+
+// Hex (#rrggbb) -> rgba(r,g,b,alpha)
+function hexToRgba(hex: string, alpha: number): string {
+  const m = hex.match(/^#?([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i);
+  if (!m) return `rgba(255,255,255,${alpha})`;
+  const r = parseInt(m[1], 16);
+  const g = parseInt(m[2], 16);
+  const b = parseInt(m[3], 16);
+  return `rgba(${r},${g},${b},${alpha})`;
 }
 
 interface NamePickerDropdownProps {
