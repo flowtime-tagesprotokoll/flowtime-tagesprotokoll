@@ -11,6 +11,7 @@ import { WartungPage } from './pages/Wartung';
 import { AdminMitarbeiterPage } from './pages/AdminMitarbeiter';
 import { AdminShopsPage } from './pages/AdminShops';
 import { ArbeitsplanPage } from './pages/Arbeitsplan';
+import { ZertifikatePage } from './pages/Zertifikate';
 import { useAuth } from './lib/authStore';
 import { checkForUpdates } from './lib/updater';
 import { SingleInstanceGate } from './components/SingleInstance';
@@ -141,6 +142,14 @@ export default function App() {
             element={
               <RequireAuth>
                 <ArbeitsplanPage />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/zertifikate"
+            element={
+              <RequireAuth>
+                <ZertifikatePage />
               </RequireAuth>
             }
           />

@@ -7,6 +7,7 @@ import { DokuReminderModal } from './DokuReminder';
 import { ShiftReminders } from './ShiftReminders';
 import { OnlineIndicator } from './OnlineIndicator';
 import { IdleLock } from './IdleLock';
+import { ZertifikateBanner } from './ZertifikateBanner';
 
 interface LayoutProps {
   children: ReactNode;
@@ -39,6 +40,7 @@ export function Layout({ children, rightSlot }: LayoutProps) {
   return (
     <div className="min-h-screen flex flex-col">
       <OnlineIndicator />
+      <ZertifikateBanner />
       <header className="border-b border-border-soft px-6 py-4 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 rounded bg-bg border border-border flex items-center justify-center">
@@ -180,6 +182,7 @@ function AdminMenu() {
             <div className="my-1 border-t border-border-soft" />
             <MenuLink to="/admin/mitarbeiter" onClick={handleLink} icon="👥" label="Mitarbeiter" />
             <MenuLink to="/admin/shops" onClick={handleLink} icon="🏪" label="Shops" />
+            <MenuLink to="/zertifikate" onClick={handleLink} icon="📜" label="Zertifikate" />
             <div className="my-1 border-t border-border-soft" />
             <MenuLink to="/reminders/preview" onClick={handleLink} icon="🔔" label="Reminder-Vorschau" />
             <MenuLink to="/wartung" onClick={handleLink} icon="🛠" label="Wartung" />

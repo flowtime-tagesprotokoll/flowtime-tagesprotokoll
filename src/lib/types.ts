@@ -19,6 +19,7 @@ export interface Profile {
   created_at: string;
   pin_hash: string | null;
   darf_arbeitsplan?: boolean;
+  darf_zertifikate?: boolean;
 }
 
 export interface Protokoll {
