@@ -52,7 +52,11 @@ export function ZertifikatePage() {
     [profiles],
   );
 
-  const [editing, setEditing] = useState<{ profile: Profile; typ: ZertifikatTyp } | null>(null);
+  const [editing, setEditing] = useState<{
+    profile: Profile;
+    typ: ZertifikatTyp;
+    initialFile?: File;
+  } | null>(null);
 
   return (
     <Layout>
@@ -115,23 +119,14 @@ export function ZertifikatePage() {
                       }
                     }
                     return (
-                      <button
+                      <ZertCell
                         key={t.key}
-                        type="button"
-                        onClick={() => canEdit && setEditing({ profile: p, typ: t.key })}
-                        disabled={!canEdit}
-                        className={`rounded px-2 py-1.5 text-xs text-left transition-all ${
-                          canEdit ? 'hover:brightness-125 cursor-pointer' : 'cursor-default'
-                        }`}
-                        style={{
-                          background: c.bg,
-                          border: `1px solid ${c.border}`,
-                          color: c.text,
-                        }}
-                        title={canEdit ? 'Klick zum Bearbeiten' : undefined}
-                      >
-                        {label}
-                      </button>
+                        canEdit={canEdit}
+                        label={label}
+                        color={c}
+                        onClick={() => setEditing({ profile: p, typ: t.key })}
+                        onDrop={(file) => setEditing({ profile: p, typ: t.key, initialFile: file })}
+                      />
                     );
                   })}
                 </div>
@@ -150,6 +145,7 @@ export function ZertifikatePage() {
         <ZertifikatModal
           profile={editing.profile}
           typ={editing.typ}
+          initialFile={editing.initialFile}
           zertifikate={(zertByProfile.get(editing.profile.id) ?? []).filter((z) => z.typ === editing.typ)}
           onClose={() => setEditing(null)}
           canEdit={canEdit}
@@ -159,21 +155,66 @@ export function ZertifikatePage() {
   );
 }
 
+interface ZertCellProps {
+  canEdit: boolean;
+  label: string;
+  color: { bg: string; border: string; text: string };
+  onClick: () => void;
+  onDrop: (file: File) => void;
+}
+
+function ZertCell({ canEdit, label, color, onClick, onDrop }: ZertCellProps) {
+  const [over, setOver] = useState(false);
+  return (
+    <button
+      type="button"
+      onClick={() => canEdit && onClick()}
+      disabled={!canEdit}
+      onDragOver={(e) => {
+        if (!canEdit) return;
+        e.preventDefault();
+        setOver(true);
+      }}
+      onDragLeave={() => setOver(false)}
+      onDrop={(e) => {
+        if (!canEdit) return;
+        e.preventDefault();
+        setOver(false);
+        const file = e.dataTransfer.files[0];
+        if (file) onDrop(file);
+      }}
+      className={`rounded px-2 py-1.5 text-xs text-left transition-all ${
+        canEdit ? 'hover:brightness-125 cursor-pointer' : 'cursor-default'
+      }`}
+      style={{
+        background: over ? 'rgba(212,255,0,0.10)' : color.bg,
+        border: over ? '1px dashed #d4ff00' : `1px solid ${color.border}`,
+        color: over ? '#d4ff00' : color.text,
+        transform: over ? 'scale(0.98)' : undefined,
+      }}
+      title={canEdit ? 'Klicken oder Datei drauf ziehen' : undefined}
+    >
+      {over ? '📎 Datei ablegen …' : label}
+    </button>
+  );
+}
+
 interface ModalProps {
   profile: Profile;
   typ: ZertifikatTyp;
+  initialFile?: File;
   zertifikate: Zertifikat[];
   onClose: () => void;
   canEdit: boolean;
 }
 
-function ZertifikatModal({ profile, typ, zertifikate, onClose, canEdit }: ModalProps) {
+function ZertifikatModal({ profile, typ, initialFile, zertifikate, onClose, canEdit }: ModalProps) {
   const session = useAuth((s) => s.session)!;
   const qc = useQueryClient();
   const typInfo = ZERTIFIKAT_TYPEN.find((t) => t.key === typ)!;
   const [ausgestellt, setAusgestellt] = useState(heuteBerlinISO());
   const [notiz, setNotiz] = useState('');
-  const [file, setFile] = useState<File | null>(null);
+  const [file, setFile] = useState<File | null>(initialFile ?? null);
   const [err, setErr] = useState<string | null>(null);
 
   const gueltigBis = berechneGueltigBis(ausgestellt, typ);
@@ -314,12 +355,25 @@ function ZertifikatModal({ profile, typ, zertifikate, onClose, canEdit }: ModalP
             </div>
             <label className="block space-y-1">
               <span className="text-xs text-muted">Datei (PDF / Foto, optional)</span>
-              <input
-                type="file"
-                accept="application/pdf,image/*"
-                onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-                className="field-input text-sm"
-              />
+              {file ? (
+                <div className="flex items-center justify-between gap-2 bg-surface-2 border border-border-soft rounded px-3 py-2 text-sm">
+                  <span className="truncate">📎 {file.name}</span>
+                  <button
+                    type="button"
+                    onClick={() => setFile(null)}
+                    className="text-xs text-minus hover:underline"
+                  >
+                    × entfernen
+                  </button>
+                </div>
+              ) : (
+                <input
+                  type="file"
+                  accept="application/pdf,image/*"
+                  onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+                  className="field-input text-sm"
+                />
+              )}
             </label>
             <label className="block space-y-1">
               <span className="text-xs text-muted">Notiz (optional)</span>
