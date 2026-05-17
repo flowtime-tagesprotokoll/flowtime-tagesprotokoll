@@ -37,12 +37,14 @@ function RedirectIfAuth({ children }: { children: ReactNode }) {
 }
 
 function AuthRefresher() {
-  // Invalidiert beim Wechsel von Mitarbeiter <-> Admin alle Queries, damit
-  // nicht kurz die alte (eingeschraenkte) Datenmenge angezeigt wird.
-  const sessionKind = useAuth((s) => s.session?.kind ?? null);
+  // Bei JEDEM Sessionwechsel (User-ID ändert sich oder Logout) wird der
+  // komplette React-Query-Cache geleert. Sonst zeigt ein neu eingeloggter
+  // Mitarbeiter kurz Daten des vorigen Users (z.B. alte Protokoll-Liste vom
+  // Admin), bis ein Refetch durchgelaufen ist.
+  const profileId = useAuth((s) => s.session?.profile.id ?? null);
   useEffect(() => {
-    queryClient.invalidateQueries();
-  }, [sessionKind]);
+    queryClient.clear();
+  }, [profileId]);
   return null;
 }
 

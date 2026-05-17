@@ -217,19 +217,34 @@ export function buildReminders(name: string): Reminder[] {
   ];
 }
 
-/** Schicht-Reminder-Steuerung: zeigt einen Reminder, plant den nächsten. */
+/**
+ * Schicht-Reminder-Steuerung. Zeigt Reminder nur in "ruhigen Momenten":
+ * - Erst-Reminder nach Login frühestens nach 4–8 Min.
+ * - Folge-Reminder nach 25–75 Min.
+ * - Wenn die geplante Zeit abgelaufen ist, wartet die Anzeige noch zusätzlich,
+ *   bis der Mitarbeiter ca. 20 s lang keine Aktion (Klick / Tastendruck /
+ *   Mausbewegung) ausgeführt hat. So plopt der Reminder nicht mitten in
+ *   eine Login-/Logout-/Speicher-Aktion rein.
+ */
+const IDLE_MS = 20_000; // 20 s ohne Aktion = "ruhig"
+const IDLE_POLL_MS = 8_000; // alle 8 s nachschauen wenn noch nicht ruhig
+
 export function ShiftReminders() {
-  const session = useAuth((s) => s.session);
+  const sessionKind = useAuth((s) => s.session?.kind ?? null);
+  const profileId = useAuth((s) => s.session?.profile.id ?? null);
+  const profileName = useAuth((s) => s.session?.profile.name ?? '');
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
   const [showNoDetail, setShowNoDetail] = useState(false);
   const orderRef = useRef<number[]>([]);
   const cursorRef = useRef(0);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastActivityRef = useRef<number>(Date.now());
+  const scheduleNextRef = useRef<(() => void) | null>(null);
 
-  // Random-Intervall in Minuten zwischen min und max (inkl.)
-  function nextDelayMs(): number {
-    const minMin = 25;
-    const maxMin = 75;
+  // Erst-Verzögerung 4–8 Min, Folge-Verzögerung 25–75 Min.
+  function delayMs(firstAfterLogin: boolean): number {
+    const minMin = firstAfterLogin ? 4 : 25;
+    const maxMin = firstAfterLogin ? 8 : 75;
     const min = Math.floor(Math.random() * (maxMin - minMin + 1)) + minMin;
     return min * 60 * 1000;
   }
@@ -243,15 +258,48 @@ export function ShiftReminders() {
     return a;
   }
 
+  // Aktivitäts-Tracker (Maus / Tasten / Touch) — bestimmt "ruhige Momente".
   useEffect(() => {
-    if (!session) return;
-    if (session.kind !== 'mitarbeiter') return;
+    if (sessionKind !== 'mitarbeiter') return;
+    const bump = () => {
+      lastActivityRef.current = Date.now();
+    };
+    const events: (keyof WindowEventMap)[] = [
+      'mousedown', 'keydown', 'touchstart', 'mousemove', 'wheel',
+    ];
+    for (const ev of events) window.addEventListener(ev, bump, { passive: true });
+    return () => {
+      for (const ev of events) window.removeEventListener(ev, bump);
+    };
+  }, [sessionKind]);
 
-    const reminders = buildReminders(firstName(session.profile.name));
+  useEffect(() => {
+    if (sessionKind !== 'mitarbeiter' || !profileId) return;
+
+    const reminders = buildReminders(firstName(profileName));
     orderRef.current = shuffle([...reminders.keys()]);
     cursorRef.current = 0;
+    // Bei Login zaehlt der Login selbst als Aktivitaet -> Timer startet ab jetzt.
+    lastActivityRef.current = Date.now();
 
-    function showAt(idx: number) {
+    function pickNextIdx(): number {
+      const idx = orderRef.current[cursorRef.current % orderRef.current.length];
+      cursorRef.current++;
+      if (cursorRef.current >= orderRef.current.length) {
+        orderRef.current = shuffle([...reminders.keys()]);
+        cursorRef.current = 0;
+      }
+      return idx;
+    }
+
+    function tryShow() {
+      const idleFor = Date.now() - lastActivityRef.current;
+      if (idleFor < IDLE_MS) {
+        // Mitarbeiter ist gerade aktiv — später nochmal versuchen.
+        timerRef.current = setTimeout(tryShow, IDLE_POLL_MS);
+        return;
+      }
+      const idx = pickNextIdx();
       const r = reminders[idx];
       showReminderNotification({
         title: `${r.emoji} ${r.title}`,
@@ -261,61 +309,35 @@ export function ShiftReminders() {
       setActiveIndex(idx);
     }
 
-    function pickNextIdx(): number {
-      const idx = orderRef.current[cursorRef.current % orderRef.current.length];
-      cursorRef.current++;
-      // Wenn die ganze Liste durch ist, neu mischen
-      if (cursorRef.current >= orderRef.current.length) {
-        orderRef.current = shuffle([...reminders.keys()]);
-        cursorRef.current = 0;
-      }
-      return idx;
-    }
-
-    function scheduleNext(delayMs: number) {
+    function scheduleNext(firstAfterLogin: boolean) {
       if (timerRef.current) clearTimeout(timerRef.current);
-      timerRef.current = setTimeout(() => {
-        showAt(pickNextIdx());
-      }, delayMs);
+      timerRef.current = setTimeout(tryShow, delayMs(firstAfterLogin));
     }
 
-    // Erster Reminder direkt nach Login (nach kurzer Verzoegerung,
-    // damit das UI eingerichtet ist und Notification-Permission
-    // ggf. schon erteilt wurde).
-    scheduleNext(1500);
+    scheduleNext(true);
+
+    // Globales Hook fuer dismiss(): naechsten planen.
+    scheduleNextRef.current = () => scheduleNext(false);
+
     return () => {
       if (timerRef.current) clearTimeout(timerRef.current);
+      scheduleNextRef.current = null;
     };
-  }, [session]);
+  }, [sessionKind, profileId, profileName]);
 
-  if (!session || session.kind !== 'mitarbeiter' || activeIndex === null) {
+  if (sessionKind !== 'mitarbeiter' || activeIndex === null) {
     return null;
   }
 
-  const reminders = buildReminders(firstName(session.profile.name));
+  const reminders = buildReminders(firstName(profileName));
   const r = reminders[activeIndex];
 
   function dismiss() {
     setShowNoDetail(false);
     setActiveIndex(null);
-    // nächsten Reminder einplanen
-    if (timerRef.current) clearTimeout(timerRef.current);
-    timerRef.current = setTimeout(() => {
-      const reminders = buildReminders(firstName(session!.profile.name));
-      const idx = orderRef.current[cursorRef.current % orderRef.current.length];
-      cursorRef.current++;
-      if (cursorRef.current >= orderRef.current.length) {
-        orderRef.current = shuffle([...reminders.keys()]);
-        cursorRef.current = 0;
-      }
-      const rNext = reminders[idx];
-      showReminderNotification({
-        title: `${rNext.emoji} ${rNext.title}`,
-        body: rNext.title,
-        tag: `flowtime-reminder-${idx}`,
-      });
-      setActiveIndex(idx);
-    }, nextDelayMs());
+    // Aktivität zurücksetzen — wir wollen erst wieder ruhig sein, bevor der nächste kommt.
+    lastActivityRef.current = Date.now();
+    scheduleNextRef.current?.();
   }
 
   return <ReminderModal reminder={r} showNoDetail={showNoDetail} onShowNoDetail={() => setShowNoDetail(true)} onClose={dismiss} />;

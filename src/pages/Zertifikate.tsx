@@ -17,6 +17,28 @@ import {
 } from '../lib/zertifikate';
 import { heuteBerlinISO } from '../lib/calc';
 
+function restlaufzeit(vonISO: string, bisISO: string): string {
+  const [vy, vm, vd] = vonISO.split('-').map(Number);
+  const [by, bm, bd] = bisISO.split('-').map(Number);
+  let years = by - vy;
+  let months = bm - vm;
+  let days = bd - vd;
+  if (days < 0) {
+    months -= 1;
+    const prevMonthDays = new Date(by, bm - 1, 0).getDate();
+    days += prevMonthDays;
+  }
+  if (months < 0) {
+    years -= 1;
+    months += 12;
+  }
+  const totalMonths = years * 12 + months;
+  const parts: string[] = [];
+  if (totalMonths > 0) parts.push(`${totalMonths} Mon`);
+  if (days > 0 || totalMonths === 0) parts.push(`${days} T`);
+  return parts.join(' ');
+}
+
 export function ZertifikatePage() {
   const session = useAuth((s) => s.session)!;
   const canEdit =
@@ -115,7 +137,7 @@ export function ZertifikatePage() {
                       } else if (st.tageBisAblauf <= 30) {
                         label = `läuft ab in ${st.tageBisAblauf} T (${dd})`;
                       } else {
-                        label = `gültig bis ${dd}`;
+                        label = `gültig bis ${dd} · noch ${restlaufzeit(heute, datum)}`;
                       }
                     }
                     return (

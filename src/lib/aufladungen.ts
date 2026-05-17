@@ -47,6 +47,11 @@ export const STARTSALDO_PER_SHOP: Record<string, ShopStartsaldo> = {
       Volkan: 40,
       Cemal: 100,
       Uwe: 7,
+      // Nezir hatte vor der 100€-Einlage am 12.05 noch 100€ offen
+      // (alte Aufladung aus Pre-System-Zeit + 50€ vom 09.05). Die
+      // 100€-Einlage tilgt das vollständig. Ohne diesen Altbestand
+      // würde das System die 100€-Einlage als Guthaben werten.
+      Nezir: 100,
     },
   },
   STÖ: {

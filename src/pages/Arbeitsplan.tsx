@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useNavigate } from 'react-router-dom';
 import { Layout } from '../components/Layout';
 import { useProfiles, useShops } from '../lib/queries';
 import { useAuth } from '../lib/authStore';
@@ -59,6 +60,7 @@ export function ArbeitsplanPage() {
   const session = useAuth((s) => s.session)!;
   const canEdit =
     session.kind === 'admin' || session.profile.darf_arbeitsplan === true;
+  const navigate = useNavigate();
   const { data: shops } = useShops();
   const [shopId, setShopId] = useState<string>('');
   const qc = useQueryClient();
@@ -270,7 +272,16 @@ export function ArbeitsplanPage() {
     <Layout>
       <div className="max-w-7xl mx-auto px-3 sm:px-6 py-5 space-y-4">
         <div className="flex items-center justify-between flex-wrap gap-3">
-          <h1 className="text-xl sm:text-2xl font-bold">📅 Arbeitsplan</h1>
+          <div>
+            <button
+              type="button"
+              onClick={() => navigate('/')}
+              className="text-xs text-muted hover:text-accent mb-1 mono"
+            >
+              ← Dashboard
+            </button>
+            <h1 className="text-xl sm:text-2xl font-bold">📅 Arbeitsplan</h1>
+          </div>
           <div className="flex items-center gap-2 flex-wrap">
             {(shops ?? []).map((s) => (
               <button
