@@ -26,6 +26,7 @@ import { STARTSALDO_PER_SHOP, berechneOffeneAufladungen } from '../lib/aufladung
 import { firstName } from '../lib/types';
 import type { Kassenbewegung, Profile, Schicht } from '../lib/types';
 import { LiveClock } from '../components/LiveClock';
+import { logAudit } from '../lib/audit';
 
 interface BewegungZeile {
   beschreibung: string;
@@ -311,30 +312,28 @@ export function ProtokollEditPage() {
     setSaveErr(null);
     try {
       const kassenstartNum = strToNum(form.kassenstart);
-      // 'manuell' kommt AUSSCHLIESSLICH aus dem Form-State (Auto-Carry &
-      // Vortags-Carry setzen es explizit auf false, manuelle Tastatur-
-      // eingabe ueber patchKassenstartS1/2 setzt es auf true). Keine
-      // Heuristik mehr - die hat falsche 'manuell=true' produziert sobald
-      // Auto-Carry einen Wert geaendert hat.
       const kassenstartManuell = form.kassenstart_manuell;
+      const patch = {
+        mitarbeiter_id: form.mitarbeiter_id || null,
+        zeit_von: form.zeit_von || null,
+        zeit_bis: form.zeit_bis || null,
+        kassenstart: kassenstartNum,
+        kassenstart_manuell: kassenstartManuell,
+        kassenstart_grund: form.kassenstart_grund || null,
+        kassenabrechnung: strToNum(form.kassenabrechnung),
+        kassenist: strToNum(form.kassenist),
+        guthaben_kundenkarte: strToNum(form.guthaben_kundenkarte),
+        offene_auszahlungen: strToNum(form.offene_auszahlungen),
+        kommentar: form.kommentar || null,
+        uebergabe_notiz: form.uebergabe_notiz || null,
+      };
+      // Diff fuer Audit-Log berechnen
+      const feldChanges = diffSchicht(schicht, patch, which);
       await updateSchicht.mutateAsync({
         shopId,
         datum,
         schichtId: schicht.id,
-        patch: {
-          mitarbeiter_id: form.mitarbeiter_id || null,
-          zeit_von: form.zeit_von || null,
-          zeit_bis: form.zeit_bis || null,
-          kassenstart: kassenstartNum,
-          kassenstart_manuell: kassenstartManuell,
-          kassenstart_grund: form.kassenstart_grund || null,
-          kassenabrechnung: strToNum(form.kassenabrechnung),
-          kassenist: strToNum(form.kassenist),
-          guthaben_kundenkarte: strToNum(form.guthaben_kundenkarte),
-          offene_auszahlungen: strToNum(form.offene_auszahlungen),
-          kommentar: form.kommentar || null,
-          uebergabe_notiz: form.uebergabe_notiz || null,
-        },
+        patch,
       });
       const allBewegungen = [
         ...form.einlagen
@@ -354,18 +353,108 @@ export function ProtokollEditPage() {
             reihenfolge: i,
           })),
       ];
+      // Bewegungen-Diff fuer Audit
+      const oldBewegungenForSchicht = (full?.bewegungen ?? []).filter(
+        (b) => b.schicht_id === schicht.id,
+      );
+      const bewChanges = diffBewegungen(oldBewegungenForSchicht, allBewegungen);
       await replaceBewegungen.mutateAsync({
         shopId,
         datum,
         schichtId: schicht.id,
         bewegungen: allBewegungen,
       });
+      // Audit-Logs feuern (fire-and-forget, blockiert Save nicht)
+      const protoId = full?.protokoll.id ?? null;
+      for (const c of feldChanges) {
+        void logAudit({
+          action: 'UPDATE',
+          protoId,
+          field: c.field,
+          oldVal: c.old as unknown,
+          newVal: c.new as unknown,
+        });
+      }
+      if (bewChanges.added.length || bewChanges.removed.length) {
+        void logAudit({
+          action: 'BEWEGUNGEN_UPDATE',
+          protoId,
+          field: `schicht${which}.bewegungen`,
+          oldVal: bewChanges.removed.length ? bewChanges.removed : null,
+          newVal: bewChanges.added.length ? bewChanges.added : null,
+        });
+      }
       if (which === 1) setS1Dirty(false);
       else setS2Dirty(false);
       setSavedAt(new Date());
     } catch (e) {
       setSaveErr(String(e instanceof Error ? e.message : e));
     }
+  }
+
+  /** Vergleicht alte Schicht (DB) mit dem Patch und gibt geaenderte Felder zurueck. */
+  function diffSchicht(
+    alt: Schicht,
+    patch: Record<string, unknown>,
+    which: 1 | 2,
+  ): { field: string; old: unknown; new: unknown }[] {
+    const interesting = [
+      'mitarbeiter_id',
+      'zeit_von',
+      'zeit_bis',
+      'kassenstart',
+      'kassenstart_manuell',
+      'kassenstart_grund',
+      'kassenabrechnung',
+      'kassenist',
+      'guthaben_kundenkarte',
+      'offene_auszahlungen',
+      'kommentar',
+      'uebergabe_notiz',
+    ] as const;
+    const changes: { field: string; old: unknown; new: unknown }[] = [];
+    for (const k of interesting) {
+      const oldV = (alt as unknown as Record<string, unknown>)[k] ?? null;
+      const newV = patch[k] ?? null;
+      const same = oldV === newV ||
+        (typeof oldV === 'number' && typeof newV === 'number' && Math.abs(oldV - newV) < 0.001);
+      if (!same) {
+        changes.push({ field: `schicht${which}.${k}`, old: oldV, new: newV });
+      }
+    }
+    return changes;
+  }
+
+  /** Vergleicht alte und neue Bewegungen, gibt added/removed-Listen zurueck. */
+  function diffBewegungen(
+    alt: { typ: string; beschreibung: string | null; betrag: number }[],
+    neu: { typ: string; beschreibung: string; betrag: number }[],
+  ): {
+    added: { typ: string; beschreibung: string; betrag: number }[];
+    removed: { typ: string; beschreibung: string | null; betrag: number }[];
+  } {
+    function key(b: { typ: string; beschreibung: string | null; betrag: number }): string {
+      return `${b.typ}|${(b.beschreibung ?? '').trim().toLowerCase()}|${Number(b.betrag).toFixed(2)}`;
+    }
+    const altMap = new Map<string, number>();
+    for (const b of alt) altMap.set(key(b), (altMap.get(key(b)) ?? 0) + 1);
+    const neuMap = new Map<string, number>();
+    for (const b of neu) neuMap.set(key(b), (neuMap.get(key(b)) ?? 0) + 1);
+    const added = neu.filter((b) => {
+      const k = key(b);
+      const c = (neuMap.get(k) ?? 0) - (altMap.get(k) ?? 0);
+      if (c <= 0) return false;
+      neuMap.set(k, (neuMap.get(k) ?? 0) - 1);
+      return true;
+    });
+    const removed = alt.filter((b) => {
+      const k = key(b);
+      const c = (altMap.get(k) ?? 0) - (neuMap.get(k) ?? 0);
+      if (c <= 0) return false;
+      altMap.set(k, (altMap.get(k) ?? 0) - 1);
+      return true;
+    });
+    return { added, removed };
   }
 
   function patchS1<K extends keyof ShiftForm>(key: K, val: ShiftForm[K]) {

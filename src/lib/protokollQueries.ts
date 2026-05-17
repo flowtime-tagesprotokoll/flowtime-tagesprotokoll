@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from './supabase';
+import { logAudit } from './audit';
 import type { Kassenbewegung, Protokoll, Schicht } from './types';
 
 export interface FullProtokoll {
@@ -79,6 +80,7 @@ export function useEnsureProtokoll() {
         .maybeSingle();
 
       let protokollId: string;
+      let wirklichNeu = false;
       if (existing) {
         protokollId = existing.id;
       } else {
@@ -108,7 +110,15 @@ export function useEnsureProtokoll() {
           }
         } else {
           protokollId = created.id;
+          wirklichNeu = true;
         }
+      }
+      if (wirklichNeu) {
+        void logAudit({
+          action: 'CREATE_PROTOKOLL',
+          protoId: protokollId,
+          newVal: `${shopId} ${datum}`,
+        });
       }
 
       // Beide Schichten sicherstellen (idempotent via upsert auf unique key)
