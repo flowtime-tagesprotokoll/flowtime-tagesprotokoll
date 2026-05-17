@@ -72,7 +72,7 @@ export function ArbeitsplanPage() {
   const [month, setMonth] = useState(() => Number(heute.slice(5, 7)));
   const { data: profiles } = useProfiles();
   const mitarbeiterListe = useMemo(
-    () => (profiles ?? []).filter((p) => p.aktiv && p.rolle !== 'admin'),
+    () => (profiles ?? []).filter((p) => p.aktiv && p.rolle !== 'admin' && !p.nur_verwaltung),
     [profiles],
   );
 

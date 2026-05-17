@@ -20,6 +20,8 @@ export interface Profile {
   pin_hash: string | null;
   darf_arbeitsplan?: boolean;
   darf_zertifikate?: boolean;
+  /** True = nur fuer Verwaltung (Zertifikate); taucht nicht im Login, Arbeitsplan oder Stunden auf. */
+  nur_verwaltung?: boolean;
 }
 
 export interface Protokoll {

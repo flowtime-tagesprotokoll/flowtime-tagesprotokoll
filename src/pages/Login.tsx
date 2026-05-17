@@ -72,7 +72,7 @@ export function LoginPage() {
 
         {profiles && (
           <div className="grid grid-cols-2 gap-3">
-            {profiles.map((p) => (
+            {profiles.filter((p) => !p.nur_verwaltung).map((p) => (
               <button
                 key={p.id}
                 type="button"

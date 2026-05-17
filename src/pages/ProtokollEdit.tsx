@@ -149,7 +149,9 @@ export function ProtokollEditPage() {
   const mitarbeiter = useMemo(
     () =>
       (profiles ?? []).filter(
-        (p) => p.rolle === 'mitarbeiter' || p.rolle === 'bezirksleiter',
+        (p) =>
+          !p.nur_verwaltung &&
+          (p.rolle === 'mitarbeiter' || p.rolle === 'bezirksleiter'),
       ),
     [profiles],
   );
