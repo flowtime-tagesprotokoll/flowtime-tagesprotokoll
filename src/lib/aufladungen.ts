@@ -216,36 +216,48 @@ export function berechneOffeneAufladungen(
   stichtag?: string,
 ): OffeneAufladung[] {
   interface Acc {
-    soll: number;     // Summe Entnahmen + Altbestand
-    gezahlt: number;  // Summe Einlagen mit diesem Kunden
-    seit: string | null;
-    anzahl: number;
+    saldo: number;     // laufender Saldo (positiv = Kunde schuldet)
+    seit: string | null; // wann ist der aktuelle offene Saldo entstanden
+    anzahl: number;    // Anzahl noch nicht getilgter Aufladungen
   }
   const map = new Map<string, Acc>();
-  // Startsaldo erst einlesen — Kunden mit Altbestand haben dann "seit: null"
+  // Startsaldo: Altbestand mit seit=null kennzeichnen
   for (const [kunde, betrag] of Object.entries(startsaldo)) {
     if (!Number.isFinite(betrag) || betrag <= 0) continue;
-    map.set(kunde, { soll: betrag, gezahlt: 0, seit: null, anzahl: 0 });
+    map.set(kunde, { saldo: betrag, seit: null, anzahl: 0 });
   }
-  for (const b of bewegungen) {
+  // Bewegungen aufsteigend nach Datum, damit der Saldo-Walk korrekt ist
+  const sorted = [...bewegungen].sort((a, b) =>
+    a.datum < b.datum ? -1 : a.datum > b.datum ? 1 : 0,
+  );
+  for (const b of sorted) {
     if (stichtag && b.datum < stichtag) continue;
     const kunde = matchKunde(b.beschreibung);
     if (!kunde) continue;
-    const entry = map.get(kunde) ?? { soll: 0, gezahlt: 0, seit: null, anzahl: 0 };
+    const acc = map.get(kunde) ?? { saldo: 0, seit: null, anzahl: 0 };
+    const wasOpen = acc.saldo > 0.005;
     if (b.typ === 'entnahme') {
-      entry.soll += b.betrag;
-      entry.anzahl += 1;
-      if (entry.seit === null || b.datum < entry.seit) entry.seit = b.datum;
+      acc.saldo += b.betrag;
+      acc.anzahl += 1;
     } else {
-      entry.gezahlt += b.betrag;
+      acc.saldo -= b.betrag;
     }
-    map.set(kunde, entry);
+    const isOpen = acc.saldo > 0.005;
+    if (isOpen && !wasOpen) {
+      // Saldo war 0 (oder negativ) und ist jetzt wieder offen -> neues 'seit'
+      acc.seit = b.datum;
+      acc.anzahl = b.typ === 'entnahme' ? 1 : 0;
+    } else if (!isOpen) {
+      // Komplett bezahlt -> reset
+      acc.seit = null;
+      acc.anzahl = 0;
+    }
+    map.set(kunde, acc);
   }
   const out: OffeneAufladung[] = [];
   for (const [kunde, acc] of map.entries()) {
-    const offen = acc.soll - acc.gezahlt;
-    if (offen > 0.005) {
-      out.push({ kunde, offen, seit: acc.seit, anzahlAufladungen: acc.anzahl });
+    if (acc.saldo > 0.005) {
+      out.push({ kunde, offen: acc.saldo, seit: acc.seit, anzahlAufladungen: acc.anzahl });
     }
   }
   // Altbestand zuerst (seit=null), dann aelteste Datums-Aufladungen
