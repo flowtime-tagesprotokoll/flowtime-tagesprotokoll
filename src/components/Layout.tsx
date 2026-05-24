@@ -8,6 +8,8 @@ import { ShiftReminders } from './ShiftReminders';
 import { OnlineIndicator } from './OnlineIndicator';
 import { IdleLock } from './IdleLock';
 import { ZertifikateBanner } from './ZertifikateBanner';
+import { supabase } from '../lib/supabase';
+import { heuteBerlinISO } from '../lib/calc';
 
 interface LayoutProps {
   children: ReactNode;
@@ -21,14 +23,37 @@ export function Layout({ children, rightSlot }: LayoutProps) {
   const [showReminder, setShowReminder] = useState(false);
   const [showDoku, setShowDoku] = useState(false);
 
-  function startSignOut() {
+  async function startSignOut() {
     if (!session) return;
-    // Mitarbeiter & Bezirksleiter müssen erst durch den Doku-Reminder
-    if (session.kind === 'mitarbeiter') {
-      setShowReminder(true);
-    } else {
+    // Admin: kein Doku-Reminder.
+    if (session.kind !== 'mitarbeiter') {
       doSignOut();
+      return;
     }
+    // Mitarbeiter: pruefen, ob er heute schon einmal mit "Nein, alles ok"
+    // bestaetigt hat. Falls ja, ueberspringen wir das Modal -- sein Nein gilt
+    // bis er aktiv (ueber den 'Vorfall dokumentieren'-Button) etwas eintraegt.
+    // So wird der MA nicht bei jedem Zwischen-Logout (App-Neustart, Refresh
+    // etc.) erneut belaestigt.
+    try {
+      const heute = heuteBerlinISO();
+      const { data, error } = await supabase
+        .from('audit_log')
+        .select('id')
+        .eq('profile_id', session.profile.id)
+        .eq('action', 'DOKU_REMINDER_OK')
+        .gte('ts', heute + 'T00:00:00')
+        .lt('ts', heute + 'T23:59:59.999')
+        .limit(1);
+      if (!error && data && data.length > 0) {
+        // Heute schon bestaetigt -> direkt abmelden.
+        doSignOut();
+        return;
+      }
+    } catch {
+      // Bei Netzwerkfehler lieber sicher das Modal zeigen.
+    }
+    setShowReminder(true);
   }
 
   async function doSignOut() {
