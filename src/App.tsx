@@ -12,6 +12,7 @@ import { AdminMitarbeiterPage } from './pages/AdminMitarbeiter';
 import { AdminShopsPage } from './pages/AdminShops';
 import { ArbeitsplanPage } from './pages/Arbeitsplan';
 import { ZertifikatePage } from './pages/Zertifikate';
+import { StundenkontoPage } from './pages/Stundenkonto';
 import { useAuth } from './lib/authStore';
 import { checkForUpdates } from './lib/updater';
 import { SingleInstanceGate } from './components/SingleInstance';
@@ -152,6 +153,14 @@ export default function App() {
             element={
               <RequireAuth>
                 <ZertifikatePage />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/stunden"
+            element={
+              <RequireAuth>
+                <StundenkontoPage />
               </RequireAuth>
             }
           />
