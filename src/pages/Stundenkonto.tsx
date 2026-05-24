@@ -26,6 +26,18 @@ function monatLabel(yyyymm: string): string {
   return `${MONATSNAMEN_LANG[m - 1]} ${y}`;
 }
 
+function fmtDateLong(iso: string): string {
+  if (!iso || iso.length < 10) return iso;
+  const [y, m, d] = iso.split('-');
+  return `${d}.${m}.${y}`;
+}
+
+function anfangsstichtagLabel(iso: string): string {
+  if (!iso || iso.length < 10) return 'Vormonat';
+  const [y, m] = iso.split('-').map(Number);
+  return `${MONATSNAMEN_LANG[m - 1]} ${y}`;
+}
+
 function fmtH(n: number): string {
   // Mit Komma als Dezimaltrennzeichen, 2 Nachkommastellen.
   return n.toLocaleString('de-DE', {
@@ -65,23 +77,40 @@ export function StundenkontoPage() {
   const { data, isLoading, error } = useQuery({
     queryKey: ['stundenkonto', targetProfileId],
     enabled: !!targetProfileId,
-    queryFn: async (): Promise<StundenkontoRow[]> => {
-      const { data, error } = await supabase.rpc('get_stundenkonto', {
-        _profile_id: targetProfileId,
-      });
-      if (error) throw error;
-      return (data ?? []).map((r: Record<string, unknown>) => ({
-        monat: String(r.monat),
-        ist_stunden: Number(r.ist_stunden),
-        soll_stunden: Number(r.soll_stunden),
-        diff: Number(r.diff),
-        kum_saldo: Number(r.kum_saldo),
-        ist_laufend: Boolean(r.ist_laufend),
-      }));
+    queryFn: async (): Promise<{
+      rows: StundenkontoRow[];
+      anfangssaldo: number;
+      anfangsstichtag: string;
+    } | null> => {
+      const [rpcRes, basisRes] = await Promise.all([
+        supabase.rpc('get_stundenkonto', { _profile_id: targetProfileId }),
+        supabase
+          .from('stundenkonto_basis')
+          .select('anfangssaldo, anfangsstichtag')
+          .eq('profile_id', targetProfileId)
+          .maybeSingle(),
+      ]);
+      if (rpcRes.error) throw rpcRes.error;
+      if (basisRes.error) throw basisRes.error;
+      if (!basisRes.data) return null;
+      return {
+        rows: (rpcRes.data ?? []).map((r: Record<string, unknown>) => ({
+          monat: String(r.monat),
+          ist_stunden: Number(r.ist_stunden),
+          soll_stunden: Number(r.soll_stunden),
+          diff: Number(r.diff),
+          kum_saldo: Number(r.kum_saldo),
+          ist_laufend: Boolean(r.ist_laufend),
+        })),
+        anfangssaldo: Number(basisRes.data.anfangssaldo),
+        anfangsstichtag: String(basisRes.data.anfangsstichtag),
+      };
     },
   });
 
-  const rows = data ?? [];
+  const rows = data?.rows ?? [];
+  const anfangssaldo = data?.anfangssaldo ?? 0;
+  const anfangsstichtag = data?.anfangsstichtag ?? '';
   const lastRow = rows[rows.length - 1];
   // Live-Saldo = letzter kum_saldo (im laufenden Monat ohne Soll-Abzug).
   const liveSaldo = lastRow ? lastRow.kum_saldo : 0;
@@ -157,7 +186,7 @@ export function StundenkontoPage() {
           </div>
         )}
 
-        {!isLoading && !error && rows.length === 0 && (
+        {!isLoading && !error && !data && (
           <div className="bg-surface border border-border rounded-lg p-6 text-center text-muted">
             Für {firstName(targetProfile.name)} ist noch kein Stundenkonto
             angelegt.
@@ -221,6 +250,32 @@ export function StundenkontoPage() {
                 <div className="text-right">Saldo</div>
               </div>
               <div className="divide-y divide-border-soft">
+                {/* Übertrag aus Vormonat als eigene Startzeile */}
+                <div
+                  className="grid gap-2 px-3 py-2.5 items-center text-sm tabular-nums"
+                  style={{
+                    gridTemplateColumns: '1.4fr 1fr 1fr 1fr 1fr',
+                    background: 'rgba(212,255,0,0.04)',
+                  }}
+                  title={`Stunden-Stand zum Ende ${anfangsstichtagLabel(anfangsstichtag)}`}
+                >
+                  <div className="font-semibold text-accent">
+                    ↪ Übertrag
+                    <div className="text-[10px] mono text-muted uppercase tracking-wider font-normal mt-0.5">
+                      Stand {fmtDateLong(anfangsstichtag)}
+                    </div>
+                  </div>
+                  <div className="text-right text-muted">—</div>
+                  <div className="text-right text-muted">—</div>
+                  <div className="text-right text-muted">—</div>
+                  <div
+                    className="text-right font-bold"
+                    style={{ color: saldoColor(anfangssaldo) }}
+                  >
+                    {fmtSigned(anfangssaldo)} h
+                  </div>
+                </div>
+
                 {rows.map((r) => (
                   <div
                     key={r.monat}
@@ -260,8 +315,9 @@ export function StundenkontoPage() {
                 ))}
               </div>
               <div className="px-3 py-2 text-[11px] text-muted bg-surface-2 border-t border-border-soft">
-                Anfangsbestand zum 30.04.2026: wurde als Übertrag aus dem
-                vorigen Monatsabschluss in den Mai 2026 übernommen.
+                <strong>Übertrag</strong> = Saldo aus dem Vormonats-Abschluss,
+                der in den ersten Monat einfließt. Jeder Folgemonat baut auf
+                dem Saldo des Vormonats auf.
               </div>
             </div>
 
