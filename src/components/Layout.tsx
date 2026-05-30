@@ -8,6 +8,7 @@ import { ShiftReminders } from './ShiftReminders';
 import { OnlineIndicator } from './OnlineIndicator';
 import { IdleLock } from './IdleLock';
 import { ZertifikateBanner } from './ZertifikateBanner';
+import { ThermodruckerBar } from './ThermodruckerBar';
 import { supabase } from '../lib/supabase';
 import { heuteBerlinISO } from '../lib/calc';
 
@@ -66,6 +67,7 @@ export function Layout({ children, rightSlot }: LayoutProps) {
     <div className="min-h-screen flex flex-col">
       <OnlineIndicator />
       <ZertifikateBanner />
+      {session && <ThermodruckerBar />}
       <header className="border-b border-border-soft px-6 py-4 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 rounded bg-bg border border-border flex items-center justify-center">
