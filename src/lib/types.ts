@@ -74,6 +74,13 @@ export interface AuditEntry {
   field: string | null;
   old_val: unknown;
   new_val: unknown;
+  // Korrektur-Felder (Migration 0016)
+  gueltig?: boolean;
+  bezieht_sich_auf_datum?: string | null;
+  bezieht_sich_auf_profile_id?: string | null;
+  ersetzt_audit_id?: number | null;
+  korrektur_grund?: string | null;
+  korrigiert_von?: string | null;
 }
 
 /** Aktive Session: entweder Admin (mit Supabase-Auth) oder Mitarbeiter (nur Profil). */

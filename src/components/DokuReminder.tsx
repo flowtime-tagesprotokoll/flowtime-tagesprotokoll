@@ -9,13 +9,13 @@ interface Props {
   onDone: () => void;
 }
 
-interface CategoryItem {
+export interface CategoryItem {
   key: string;
   label: string;
   emoji: string;
 }
 
-const KAT_JSP: CategoryItem[] = [
+export const KAT_JSP: CategoryItem[] = [
   { key: 'spielverhalten_ansprache', emoji: '💬', label: 'Gast auf Spielverhalten angesprochen' },
   { key: 'beratung_kontakte', emoji: '📞', label: 'Kontaktdaten Beratung weitergegeben' },
   { key: 'flyer_ausgabe', emoji: '📄', label: 'Infomaterial / Flyer weitergegeben' },
@@ -30,7 +30,7 @@ const KAT_JSP: CategoryItem[] = [
   { key: 'oasis_aufmerksam', emoji: '👁️', label: 'Auf Oasis-Spielersperre aufmerksam gemacht' },
 ];
 
-const KAT_GW: CategoryItem[] = [
+export const KAT_GW: CategoryItem[] = [
   { key: 'gw_hohe_einzahlung_kleine_quoten', emoji: '💸', label: 'Hohe Einzahlung — kaum Spiel / nur kleine Quoten' },
   { key: 'gw_auszahlung_mit_nachweis', emoji: '🧾', label: 'Hohe Einzahlung als Gewinn auszahlen + Nachweis verlangt' },
   { key: 'gw_fremdkonto_auszahlung', emoji: '🔀', label: 'Versuch Auszahlung über fremdes Konto' },
