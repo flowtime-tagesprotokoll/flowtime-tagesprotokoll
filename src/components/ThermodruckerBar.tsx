@@ -256,19 +256,19 @@ export function ThermodruckerBar() {
                 }}
                 disabled={mut.isPending}
                 title={tooltip}
-                className="rounded-lg px-2.5 py-1 flex flex-col items-center transition-all hover:brightness-125 disabled:opacity-50 min-w-[70px]"
+                className="rounded px-1.5 py-0.5 flex flex-col items-center transition-all hover:brightness-125 disabled:opacity-50 min-w-[52px]"
                 style={{
                   background: f.bg,
                   border: `1px solid ${f.border}`,
                   color: f.text,
                 }}
               >
-                <div className="text-base font-bold leading-none">
+                <div className="text-[12px] font-bold leading-none">
                   T{t.terminal_nr}
                 </div>
-                <div className="text-[10px] mono leading-tight mt-0.5">{wann}</div>
+                <div className="text-[9px] mono leading-tight mt-0.5">{wann}</div>
                 {t.anzahl_letzte_30_tage > 0 && (
-                  <div className="text-[9px] mono opacity-70 leading-none">
+                  <div className="text-[8px] mono opacity-70 leading-none">
                     {t.anzahl_letzte_30_tage}× / 30 T
                   </div>
                 )}
