@@ -12,6 +12,7 @@ import {
   useReplaceBewegungen,
   useUpdateSchicht,
   useVortagKasse,
+  useVortagsUebergabe,
 } from '../lib/protokollQueries';
 import {
   DIFF_WARN_THRESHOLD,
@@ -159,6 +160,7 @@ export function ProtokollEditPage() {
   const ensure = useEnsureProtokoll();
   const { data: full, isLoading, error: protoErr } = useProtokoll(shopId, datum);
   const { data: vortag } = useVortagKasse(shopId, datum);
+  const { data: vortagsUebergabe } = useVortagsUebergabe(shopId, datum);
   const { data: aufladungBewegungen } = useAufladungBewegungen(shopId);
   const updateSchicht = useUpdateSchicht();
   const replaceBewegungen = useReplaceBewegungen();
@@ -721,7 +723,36 @@ export function ProtokollEditPage() {
           </div>
         )}
 
-        {/* Übergabe-Notiz Banner (sichtbar wenn die andere Schicht eine Notiz hinterlassen hat) */}
+        {/* Übergabe-Notiz vom Vortag (Spät-/letzte Schicht des vorherigen Tages an heute) */}
+        {vortagsUebergabe && vortagsUebergabe.uebergabe_notiz.trim() && (
+          <div
+            className="rounded-lg border-2 p-3"
+            style={{
+              borderColor: '#d4ff00',
+              background: 'rgba(212,255,0,0.08)',
+            }}
+          >
+            <div
+              className="text-xs font-bold uppercase tracking-wider mb-1"
+              style={{ color: '#d4ff00' }}
+            >
+              📨 Übergabe vom Vortag ·{' '}
+              {new Date(vortagsUebergabe.datum + 'T00:00:00').toLocaleDateString(
+                'de-DE',
+                { day: '2-digit', month: '2-digit', year: '2-digit' },
+              )}{' '}
+              · Schicht {vortagsUebergabe.schicht_nr}
+              {vortagsUebergabe.mitarbeiter_name && (
+                <> · {firstName(vortagsUebergabe.mitarbeiter_name)}</>
+              )}
+            </div>
+            <div className="whitespace-pre-wrap text-base">
+              {vortagsUebergabe.uebergabe_notiz}
+            </div>
+          </div>
+        )}
+
+        {/* Übergabe-Notiz Banner (sichtbar wenn die andere Schicht am HEUTIGEN Tag eine Notiz hinterlassen hat) */}
         {(s1Form?.uebergabe_notiz || s2Form?.uebergabe_notiz) && (
           <div className="space-y-2">
             {s1Form?.uebergabe_notiz?.trim() && (

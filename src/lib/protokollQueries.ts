@@ -437,3 +437,80 @@ export function useVortagKasse(shopId: string, datum: string) {
     },
   });
 }
+
+/**
+ * Übergabe-Notiz aus dem vorherigen Protokoll-Tag desselben Shops.
+ * Damit Spätschicht (Schicht 2) am Vortag den Folgetags-Frühdienst
+ * informieren kann. Fallback: direktes SELECT wenn RPC noch nicht deployed.
+ */
+export function useVortagsUebergabe(shopId: string, datum: string) {
+  return useQuery({
+    queryKey: ['vortags-uebergabe', shopId, datum],
+    queryFn: async (): Promise<{
+      datum: string;
+      schicht_nr: number;
+      uebergabe_notiz: string;
+      mitarbeiter_name: string | null;
+    } | null> => {
+      const { data, error } = await supabase.rpc('get_vortags_uebergabe', {
+        _shop_id: shopId,
+        _before_date: datum,
+      });
+      if (error) {
+        const code = (error as { code?: string }).code;
+        const fallbackCodes = ['42883', 'PGRST202', '42704', '42703', '42P01'];
+        if (!code || !fallbackCodes.includes(code)) throw error;
+        // Fallback: alter Pfad (nur die letzten paar Tage abgrasen)
+        const { data: protos, error: pErr } = await supabase
+          .from('protokolle')
+          .select('id, datum, schichten(schicht_nr, uebergabe_notiz, mitarbeiter_id)')
+          .eq('shop_id', shopId)
+          .lt('datum', datum)
+          .order('datum', { ascending: false })
+          .limit(5);
+        if (pErr) throw pErr;
+        for (const p of (protos ?? []) as Array<{
+          datum: string;
+          schichten: Array<{
+            schicht_nr: number;
+            uebergabe_notiz: string | null;
+            mitarbeiter_id: string | null;
+          }>;
+        }>) {
+          const sorted = [...(p.schichten ?? [])].sort(
+            (a, b) => b.schicht_nr - a.schicht_nr,
+          );
+          const hit = sorted.find(
+            (s) => s.uebergabe_notiz && s.uebergabe_notiz.trim().length > 0,
+          );
+          if (!hit) continue;
+          let name: string | null = null;
+          if (hit.mitarbeiter_id) {
+            const { data: prof } = await supabase
+              .from('profiles')
+              .select('name')
+              .eq('id', hit.mitarbeiter_id)
+              .maybeSingle();
+            name = prof?.name ?? null;
+          }
+          return {
+            datum: p.datum,
+            schicht_nr: hit.schicht_nr,
+            uebergabe_notiz: hit.uebergabe_notiz!,
+            mitarbeiter_name: name,
+          };
+        }
+        return null;
+      }
+      const rows = (data ?? []) as Array<{
+        datum: string;
+        schicht_nr: number;
+        uebergabe_notiz: string;
+        mitarbeiter_name: string | null;
+      }>;
+      if (rows.length === 0) return null;
+      return rows[0];
+    },
+    staleTime: 30_000,
+  });
+}
