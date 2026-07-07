@@ -1,4 +1,4 @@
-import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
+import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { LoginPage } from './pages/Login';
 import { DashboardPage } from './pages/Dashboard';
@@ -13,6 +13,7 @@ import { AdminShopsPage } from './pages/AdminShops';
 import { ArbeitsplanPage } from './pages/Arbeitsplan';
 import { ZertifikatePage } from './pages/Zertifikate';
 import { StundenkontoPage } from './pages/Stundenkonto';
+import { VorfuehrDashboardPage } from './pages/VorfuehrDashboard';
 import { useAuth } from './lib/authStore';
 import { checkForUpdates } from './lib/updater';
 import { SingleInstanceGate } from './components/SingleInstance';
@@ -27,13 +28,28 @@ const queryClient = new QueryClient({
 
 function RequireAuth({ children }: { children: ReactNode }) {
   const session = useAuth((s) => s.session);
-  if (!session) return <Navigate to="/login" replace />;
+  const location = useLocation();
+  if (!session) {
+    return (
+      <Navigate
+        to="/login"
+        state={{ from: location.pathname + location.search }}
+        replace
+      />
+    );
+  }
   return <>{children}</>;
 }
 
 function RedirectIfAuth({ children }: { children: ReactNode }) {
   const session = useAuth((s) => s.session);
-  if (session) return <Navigate to="/" replace />;
+  const location = useLocation();
+  if (session) {
+    // Wenn der Login von /vorfuehrung angefordert wurde, dorthin zurueck.
+    const from = (location.state as { from?: string } | null)?.from;
+    const target = from && from.startsWith('/vorfuehrung') ? from : '/';
+    return <Navigate to={target} replace />;
+  }
   return <>{children}</>;
 }
 
@@ -161,6 +177,22 @@ export default function App() {
             element={
               <RequireAuth>
                 <StundenkontoPage />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/vorfuehrung"
+            element={
+              <RequireAuth>
+                <VorfuehrDashboardPage />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/vorfuehrung/bericht"
+            element={
+              <RequireAuth>
+                <DokuberichtPage />
               </RequireAuth>
             }
           />

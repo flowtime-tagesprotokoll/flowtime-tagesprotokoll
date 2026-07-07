@@ -8,6 +8,7 @@ import { useProfiles, useShops } from '../lib/queries';
 import type { AuditEntry, Profile, Schicht } from '../lib/types';
 import { VorfallEditModal } from '../components/VorfallEditModal';
 import { firstName } from '../lib/types';
+import { useVorfuehrModus } from '../lib/vorfuehr';
 
 function currentMonth(): string {
   return new Date().toISOString().slice(0, 7);
@@ -96,6 +97,7 @@ type EditingState =
 export function DokuberichtPage() {
   const session = useAuth((s) => s.session)!;
   const navigate = useNavigate();
+  const vorfuehr = useVorfuehrModus();
   const qc = useQueryClient();
   const [month, setMonth] = useState(currentMonth());
   const [editing, setEditing] = useState<EditingState>(null);
@@ -256,7 +258,7 @@ export function DokuberichtPage() {
           <div>
             <button
               type="button"
-              onClick={() => navigate('/')}
+              onClick={() => navigate(vorfuehr ? '/vorfuehrung' : '/')}
               className="text-xs text-muted hover:text-accent mb-1 mono"
             >
               ← Dashboard

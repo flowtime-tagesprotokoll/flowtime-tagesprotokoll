@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { Layout } from '../components/Layout';
 import { PinKeypad } from '../components/PinKeypad';
 import { useProfiles } from '../lib/queries';
@@ -14,6 +14,13 @@ export function LoginPage() {
   const { data: profiles, isLoading, error } = useProfiles();
   const setMitarbeiter = useAuth((s) => s.setMitarbeiter);
   const navigate = useNavigate();
+  const location = useLocation();
+  // Wenn RequireAuth uns hierher geschickt hat, kennt es via state.from die
+  // urspruengliche URL. Loggt sich der Nutzer erfolgreich ein, gehen wir
+  // dorthin zurueck — insbesondere fuer /vorfuehrung wichtig.
+  const fromState = (location.state as { from?: string } | null)?.from;
+  const zielNachLogin =
+    fromState && fromState.startsWith('/vorfuehrung') ? fromState : '/';
   const [adminProfile, setAdminProfile] = useState<Profile | null>(null);
   const [pinProfile, setPinProfile] = useState<Profile | null>(null);
   const [pinErr, setPinErr] = useState<string | null>(null);
@@ -31,7 +38,7 @@ export function LoginPage() {
     } else {
       ensureNotificationPermission().catch(() => {});
       setMitarbeiter(p);
-      navigate('/');
+      navigate(zielNachLogin);
     }
   }
 
@@ -48,7 +55,7 @@ export function LoginPage() {
     ensureNotificationPermission().catch(() => {});
     setMitarbeiter(pinProfile);
     setPinProfile(null);
-    navigate('/');
+    navigate(zielNachLogin);
   }
 
   return (
@@ -97,7 +104,7 @@ export function LoginPage() {
           onClose={() => setAdminProfile(null)}
           onSuccess={(authUserId, profile) => {
             useAuth.getState().setAdmin(profile, authUserId);
-            navigate('/');
+            navigate(zielNachLogin);
           }}
         />
       )}

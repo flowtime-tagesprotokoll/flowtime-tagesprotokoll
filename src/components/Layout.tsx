@@ -11,6 +11,7 @@ import { ZertifikateBanner } from './ZertifikateBanner';
 import { ThermodruckerBar } from './ThermodruckerBar';
 import { supabase } from '../lib/supabase';
 import { heuteBerlinISO } from '../lib/calc';
+import { useVorfuehrModus } from '../lib/vorfuehr';
 
 interface LayoutProps {
   children: ReactNode;
@@ -21,6 +22,7 @@ export function Layout({ children, rightSlot }: LayoutProps) {
   const session = useAuth((s) => s.session);
   const signOut = useAuth((s) => s.signOut);
   const navigate = useNavigate();
+  const vorfuehr = useVorfuehrModus();
   const [showReminder, setShowReminder] = useState(false);
   const [showDoku, setShowDoku] = useState(false);
 
@@ -60,14 +62,17 @@ export function Layout({ children, rightSlot }: LayoutProps) {
   async function doSignOut() {
     await signOut();
     setShowReminder(false);
-    navigate('/login');
+    // Vorfuehr-Modus: nach Logout gehen wir NICHT auf /login (das wuerde die
+    // Adressleiste offenlegen wo man sonst noch hin kann) sondern zurueck auf
+    // /vorfuehrung, damit der Login-Screen die Doku-App bleibt.
+    navigate(vorfuehr ? '/vorfuehrung' : '/login');
   }
 
   return (
     <div className="min-h-screen flex flex-col">
       <OnlineIndicator />
-      <ZertifikateBanner />
-      {session && <ThermodruckerBar />}
+      {!vorfuehr && <ZertifikateBanner />}
+      {!vorfuehr && session && <ThermodruckerBar />}
       <header className="border-b border-border-soft px-6 py-4 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 rounded bg-bg border border-border flex items-center justify-center">
@@ -75,33 +80,49 @@ export function Layout({ children, rightSlot }: LayoutProps) {
           </div>
           <div>
             <div className="font-semibold text-[15px] leading-tight">Flowtime</div>
-            <div className="text-xs text-muted leading-tight">Tagesprotokoll</div>
+            <div className="text-xs text-muted leading-tight">
+              {vorfuehr ? 'Dokumentations-App' : 'Tagesprotokoll'}
+            </div>
           </div>
         </div>
 
         <div className="flex items-center gap-2">
           {rightSlot}
-          {session?.kind === 'admin' && <AdminMenu />}
+          {!vorfuehr && session?.kind === 'admin' && <AdminMenu />}
+          {vorfuehr && session?.kind === 'admin' && (
+            <Link
+              to="/vorfuehrung/bericht"
+              className="rounded-lg bg-surface-2 border border-border hover:border-accent hover:text-accent text-text font-semibold text-xs px-3 py-1.5 transition-colors flex items-center gap-1.5"
+              title="Dokumentationsbericht"
+            >
+              <span>📑</span>
+              <span>Bericht</span>
+            </Link>
+          )}
           {session && (
             <>
-              <Link
-                to="/arbeitsplan"
-                className="rounded-lg bg-surface-2 border border-border hover:border-accent hover:text-accent text-text font-semibold text-xs px-3 py-1.5 transition-colors flex items-center gap-1.5"
-                title="Monatlicher Arbeitsplan"
-              >
-                <span>📅</span>
-                <span className="hidden sm:inline">Arbeitsplan</span>
-                <span className="sm:hidden">Plan</span>
-              </Link>
-              <Link
-                to="/stunden"
-                className="rounded-lg bg-surface-2 border border-border hover:border-accent hover:text-accent text-text font-semibold text-xs px-3 py-1.5 transition-colors flex items-center gap-1.5"
-                title="Stundenkonto: Guthaben/Minus-Stunden"
-              >
-                <span>⏱</span>
-                <span className="hidden sm:inline">Stunden</span>
-                <span className="sm:hidden">Std</span>
-              </Link>
+              {!vorfuehr && (
+                <>
+                  <Link
+                    to="/arbeitsplan"
+                    className="rounded-lg bg-surface-2 border border-border hover:border-accent hover:text-accent text-text font-semibold text-xs px-3 py-1.5 transition-colors flex items-center gap-1.5"
+                    title="Monatlicher Arbeitsplan"
+                  >
+                    <span>📅</span>
+                    <span className="hidden sm:inline">Arbeitsplan</span>
+                    <span className="sm:hidden">Plan</span>
+                  </Link>
+                  <Link
+                    to="/stunden"
+                    className="rounded-lg bg-surface-2 border border-border hover:border-accent hover:text-accent text-text font-semibold text-xs px-3 py-1.5 transition-colors flex items-center gap-1.5"
+                    title="Stundenkonto: Guthaben/Minus-Stunden"
+                  >
+                    <span>⏱</span>
+                    <span className="hidden sm:inline">Stunden</span>
+                    <span className="sm:hidden">Std</span>
+                  </Link>
+                </>
+              )}
               <button
                 type="button"
                 onClick={() => setShowDoku(true)}
@@ -142,7 +163,7 @@ export function Layout({ children, rightSlot }: LayoutProps) {
 
       <main className="flex-1">{children}</main>
 
-      {session?.kind === 'mitarbeiter' && (
+      {!vorfuehr && session?.kind === 'mitarbeiter' && (
         <div
           className="px-6 py-2 text-xs text-center flex items-center justify-center gap-2"
           style={{
@@ -179,7 +200,7 @@ export function Layout({ children, rightSlot }: LayoutProps) {
         />
       )}
 
-      <ShiftReminders />
+      {!vorfuehr && <ShiftReminders />}
       <IdleLock />
     </div>
   );
