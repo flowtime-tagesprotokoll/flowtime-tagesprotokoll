@@ -110,6 +110,9 @@ export function DokuberichtPage() {
 
   const adminId = session.kind === 'admin' ? session.profile.id : null;
 
+  // Shop-Filter: 'all' | shop.id
+  const [filterShopId, setFilterShopId] = useState<string>('all');
+
   const editMut = useMutation({
     mutationFn: async (args: {
       audit_id: number;
@@ -202,7 +205,7 @@ export function DokuberichtPage() {
     return m;
   }, [shops]);
 
-  // Group days
+  // Group days — respektiert Shop-Filter
   const days = useMemo(() => {
     const map = new Map<
       string,
@@ -213,6 +216,7 @@ export function DokuberichtPage() {
       }>
     >();
     (protokolle ?? []).forEach((p) => {
+      if (filterShopId !== 'all' && p.shop_id !== filterShopId) return;
       const list = map.get(p.datum) ?? [];
       list.push({
         shopId: p.shop_id,
@@ -222,7 +226,23 @@ export function DokuberichtPage() {
       map.set(p.datum, list);
     });
     return [...map.entries()].sort(([a], [b]) => a.localeCompare(b));
-  }, [protokolle, shopMap]);
+  }, [protokolle, shopMap, filterShopId]);
+
+  // Menge der (datum|profile_id)-Paare, die im gefilterten Zeitraum tatsaechlich
+  // eine Schicht haben. Fuer die Vorfall-Zaehlung im Header.
+  const relevanteDayUserPaare = useMemo(() => {
+    const s = new Set<string>();
+    for (const [datum, shopsAmTag] of days) {
+      for (const sh of shopsAmTag) {
+        for (const schicht of sh.schichten) {
+          if (schicht.mitarbeiter_id) {
+            s.add(`${datum}|${schicht.mitarbeiter_id}`);
+          }
+        }
+      }
+    }
+    return s;
+  }, [days]);
 
   // Audit nach Tag und nach Mitarbeiter gruppieren — nur gueltige Eintraege,
   // bezieht_sich_auf_datum / bezieht_sich_auf_profile_id ueberschreiben die
@@ -247,9 +267,19 @@ export function DokuberichtPage() {
     return m;
   }, [audit]);
 
-  const totalVorfaelle = (audit ?? []).filter(
-    (a) => a.action === 'VORFALL' && a.gueltig !== false,
-  ).length;
+  const totalVorfaelle = (audit ?? []).filter((a) => {
+    if (a.action !== 'VORFALL' || a.gueltig === false) return false;
+    if (filterShopId === 'all') return true;
+    const day = a.bezieht_sich_auf_datum ?? a.ts.slice(0, 10);
+    const user = a.bezieht_sich_auf_profile_id ?? a.profile_id;
+    if (!user) return false;
+    return relevanteDayUserPaare.has(`${day}|${user}`);
+  }).length;
+
+  const filterShopName =
+    filterShopId === 'all'
+      ? null
+      : shopMap.get(filterShopId)?.name ?? filterShopId;
 
   return (
     <Layout>
@@ -269,7 +299,22 @@ export function DokuberichtPage() {
               Mitarbeiter.
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
+            <div className="flex items-center gap-1">
+              <FilterButton
+                aktiv={filterShopId === 'all'}
+                onClick={() => setFilterShopId('all')}
+                label="Alle Shops"
+              />
+              {(shops ?? []).map((s) => (
+                <FilterButton
+                  key={s.id}
+                  aktiv={filterShopId === s.id}
+                  onClick={() => setFilterShopId(s.id)}
+                  label={s.name}
+                />
+              ))}
+            </div>
             <input
               type="month"
               value={month}
@@ -292,6 +337,9 @@ export function DokuberichtPage() {
           <div className="border-b-2 border-border print:border-black pb-3">
             <h1 className="text-2xl font-bold print:text-black">
               Dokumentationsbericht — Flowtime GmbH
+              {filterShopName && (
+                <span className="font-normal"> · {filterShopName}</span>
+              )}
             </h1>
             <div className="text-sm text-muted print:text-black mt-1">
               Berichtszeitraum:{' '}
@@ -302,7 +350,10 @@ export function DokuberichtPage() {
                 })}
               </strong>
               {' · '}
-              {(protokolle ?? []).length} Tage erfasst
+              <strong>Standort:</strong>{' '}
+              {filterShopName ?? 'Alle Standorte'}
+              {' · '}
+              {days.length} Tage erfasst
               {' · '}
               {totalVorfaelle} Vorfälle
             </div>
@@ -628,6 +679,37 @@ export function DokuberichtPage() {
         />
       )}
     </Layout>
+  );
+}
+
+interface FilterButtonProps {
+  aktiv: boolean;
+  label: string;
+  onClick: () => void;
+}
+
+function FilterButton({ aktiv, label, onClick }: FilterButtonProps) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="rounded-lg px-3 py-1.5 text-xs font-bold transition-colors"
+      style={
+        aktiv
+          ? {
+              background: 'rgba(212,255,0,0.12)',
+              border: '1px solid rgba(212,255,0,0.5)',
+              color: '#d4ff00',
+            }
+          : {
+              background: '#1c1c1c',
+              border: '1px solid #2a2a2a',
+              color: '#888',
+            }
+      }
+    >
+      {label}
+    </button>
   );
 }
 
