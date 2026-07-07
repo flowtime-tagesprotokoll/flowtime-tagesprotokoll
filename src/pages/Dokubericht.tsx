@@ -522,12 +522,34 @@ export function DokuberichtPage() {
             );
           })}
 
-          <div className="text-xs text-muted print:text-black pt-3 border-t border-border-soft print:border-gray-300">
-            Dieser Bericht wurde automatisch aus dem Audit-Log generiert (Action
-            "VORFALL" + "DOKU_REMINDER_OK"). Erfasst werden Vorfälle des
-            Jugend- und Spielerschutzes sowie Geldwäsche-Verdachtsmeldungen
-            gemäß GlüStV / GwG. Nachträglich korrigierte oder nachgetragene
-            Einträge sind als solche markiert.
+          <div className="text-xs text-muted print:text-black pt-3 border-t border-border-soft print:border-gray-300 space-y-2 leading-relaxed">
+            <p>
+              <strong>Erstellung:</strong> Dieser Bericht wurde mit der
+              Vorfalldokumentations-App der{' '}
+              <strong>Flowtime GmbH</strong> erstellt.
+            </p>
+            <p>
+              <strong>Verfahren:</strong> Die App fordert alle Mitarbeiter
+              täglich dazu auf, dokumentationspflichtige Vorfälle (Jugend- und
+              Spielerschutz, Verdacht auf Geldwäsche gemäß GlüStV / GwG) zu
+              erfassen. Liegt an einem Arbeitstag kein solcher Vorfall vor,
+              bestätigt der jeweilige Mitarbeiter dies vor Verlassen der
+              Schicht ausdrücklich durch aktive Eingabe. Diese
+              Negativ-Bestätigung ist verbindlich.
+            </p>
+            <p>
+              <strong>Verantwortlichkeit:</strong> Jeder Mitarbeiter meldet
+              sich mit seinem persönlichen Profil und einer eigenen PIN an.
+              Für die inhaltliche Richtigkeit der von ihm dokumentierten
+              Vorfälle sowie der Negativ-Bestätigungen trägt der jeweilige
+              Mitarbeiter die Verantwortung.
+            </p>
+            <p className="text-muted italic">
+              Der Bericht wird fortlaufend aus einem
+              manipulationsgeschützten Audit-Log generiert; nachträgliche
+              Korrekturen oder Nachträge durch die Geschäftsleitung sind als
+              solche gekennzeichnet.
+            </p>
           </div>
         </div>
 

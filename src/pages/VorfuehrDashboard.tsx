@@ -21,7 +21,7 @@ export function VorfuehrDashboardPage() {
       <div className="max-w-3xl mx-auto px-6 py-10 sm:py-16 space-y-8">
         <div className="text-center space-y-2">
           <h1 className="text-2xl sm:text-3xl font-bold">
-            Dokumentations-App
+            Vorfalldokumentation
           </h1>
           <p className="text-base text-muted">
             Für Vorfälle im Rahmen des Jugend- und Spielerschutzes sowie

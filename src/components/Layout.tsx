@@ -81,7 +81,7 @@ export function Layout({ children, rightSlot }: LayoutProps) {
           <div>
             <div className="font-semibold text-[15px] leading-tight">Flowtime</div>
             <div className="text-xs text-muted leading-tight">
-              {vorfuehr ? 'Dokumentations-App' : 'Tagesprotokoll'}
+              {vorfuehr ? 'Vorfalldokumentation' : 'Tagesprotokoll'}
             </div>
           </div>
         </div>
