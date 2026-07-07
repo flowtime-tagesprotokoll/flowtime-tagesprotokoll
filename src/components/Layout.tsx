@@ -11,7 +11,7 @@ import { ZertifikateBanner } from './ZertifikateBanner';
 import { ThermodruckerBar } from './ThermodruckerBar';
 import { supabase } from '../lib/supabase';
 import { heuteBerlinISO } from '../lib/calc';
-import { useVorfuehrModus } from '../lib/vorfuehr';
+import { useVorfuehrBranding, useVorfuehrModus } from '../lib/vorfuehr';
 
 interface LayoutProps {
   children: ReactNode;
@@ -23,6 +23,7 @@ export function Layout({ children, rightSlot }: LayoutProps) {
   const signOut = useAuth((s) => s.signOut);
   const navigate = useNavigate();
   const vorfuehr = useVorfuehrModus();
+  useVorfuehrBranding(vorfuehr);
   const [showReminder, setShowReminder] = useState(false);
   const [showDoku, setShowDoku] = useState(false);
 

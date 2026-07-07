@@ -1,0 +1,19 @@
+{
+  "name": "Vorfalldokumentation — Flowtime GmbH",
+  "short_name": "Vorfall Doku",
+  "description": "Vorfalldokumentation nach GlüStV und GwG",
+  "id": "/flowtime-tagesprotokoll/vorfuehrung",
+  "start_url": "/flowtime-tagesprotokoll/vorfuehrung",
+  "scope": "/flowtime-tagesprotokoll/",
+  "display": "standalone",
+  "orientation": "any",
+  "lang": "de",
+  "theme_color": "#0a0a0a",
+  "background_color": "#0a0a0a",
+  "icons": [
+    { "src": "/flowtime-tagesprotokoll/icon-vorfall-doku-128.png", "sizes": "128x128", "type": "image/png" },
+    { "src": "/flowtime-tagesprotokoll/icon-vorfall-doku-256.png", "sizes": "256x256", "type": "image/png" },
+    { "src": "/flowtime-tagesprotokoll/icon-vorfall-doku-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "/flowtime-tagesprotokoll/icon-vorfall-doku-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}
