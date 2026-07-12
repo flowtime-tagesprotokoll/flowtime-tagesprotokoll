@@ -23,13 +23,54 @@ function useAllProfiles() {
   });
 }
 
+interface StundenkontoBasis {
+  profile_id: string;
+  sollstunden_pro_monat: number;
+  anfangssaldo: number;
+  anfangsstichtag: string;
+}
+
+function useStundenkontoBasis() {
+  return useQuery({
+    queryKey: ['stundenkonto-basis-all'],
+    queryFn: async (): Promise<Map<string, StundenkontoBasis>> => {
+      const { data, error } = await supabase
+        .from('stundenkonto_basis')
+        .select('profile_id, sollstunden_pro_monat, anfangssaldo, anfangsstichtag');
+      if (error) throw error;
+      const map = new Map<string, StundenkontoBasis>();
+      for (const r of (data ?? []) as StundenkontoBasis[]) {
+        map.set(r.profile_id, {
+          profile_id: r.profile_id,
+          sollstunden_pro_monat: Number(r.sollstunden_pro_monat),
+          anfangssaldo: Number(r.anfangssaldo),
+          anfangsstichtag: r.anfangsstichtag,
+        });
+      }
+      return map;
+    },
+  });
+}
+
+function endOfPreviousMonthISO(): string {
+  const d = new Date();
+  d.setDate(1);
+  d.setDate(d.getDate() - 1); // letzter Tag des Vormonats
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
 export function AdminMitarbeiterPage() {
   const session = useAuth((s) => s.session)!;
   const navigate = useNavigate();
   const qc = useQueryClient();
   const { data: profiles, isLoading } = useAllProfiles();
+  const { data: sollMap } = useStundenkontoBasis();
   const [newName, setNewName] = useState('');
   const [newRolle, setNewRolle] = useState<Rolle>('mitarbeiter');
+  const [newSollstunden, setNewSollstunden] = useState<string>('43');
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [pinForProfile, setPinForProfile] = useState<Profile | null>(null);
@@ -49,6 +90,30 @@ export function AdminMitarbeiterPage() {
   function invalidate() {
     qc.invalidateQueries({ queryKey: ['profiles-all'] });
     qc.invalidateQueries({ queryKey: ['profiles'] });
+    qc.invalidateQueries({ queryKey: ['stundenkonto-basis-all'] });
+    qc.invalidateQueries({ queryKey: ['stundenkonto'] });
+  }
+
+  async function upsertSollstunden(
+    profile_id: string,
+    sollstunden_pro_monat: number,
+    opts?: { anfangssaldo?: number; anfangsstichtag?: string },
+  ) {
+    const existing = sollMap?.get(profile_id);
+    const row = {
+      profile_id,
+      sollstunden_pro_monat,
+      anfangssaldo: opts?.anfangssaldo ?? existing?.anfangssaldo ?? 0,
+      anfangsstichtag:
+        opts?.anfangsstichtag ??
+        existing?.anfangsstichtag ??
+        endOfPreviousMonthISO(),
+    };
+    const { error } = await supabase
+      .from('stundenkonto_basis')
+      .upsert(row, { onConflict: 'profile_id' });
+    if (error) throw error;
+    invalidate();
   }
 
   const update = useMutation({
@@ -65,15 +130,33 @@ export function AdminMitarbeiterPage() {
     setErr(null);
     try {
       const maxOrder = Math.max(0, ...(profiles ?? []).map((p) => p.reihenfolge));
-      const { error } = await supabase.from('profiles').insert({
-        name: newName.trim(),
-        rolle: newRolle,
-        reihenfolge: maxOrder + 1,
-        aktiv: true,
-      });
+      const { data: inserted, error } = await supabase
+        .from('profiles')
+        .insert({
+          name: newName.trim(),
+          rolle: newRolle,
+          reihenfolge: maxOrder + 1,
+          aktiv: true,
+        })
+        .select('id')
+        .single();
       if (error) throw error;
+      // Für Mitarbeiter/Bezirksleiter direkt Sollstunden anlegen.
+      const soll = parseFloat(newSollstunden.replace(',', '.'));
+      if (
+        inserted?.id &&
+        newRolle !== 'admin' &&
+        Number.isFinite(soll) &&
+        soll > 0
+      ) {
+        await upsertSollstunden(inserted.id, soll, {
+          anfangssaldo: 0,
+          anfangsstichtag: endOfPreviousMonthISO(),
+        });
+      }
       setNewName('');
       setNewRolle('mitarbeiter');
+      setNewSollstunden('43');
       invalidate();
     } catch (e) {
       setErr(String(e instanceof Error ? e.message : e));
@@ -160,7 +243,7 @@ export function AdminMitarbeiterPage() {
           <h2 className="font-bold text-sm uppercase tracking-wider text-muted">
             ➕ Neuer Eintrag
           </h2>
-          <div className="grid grid-cols-1 sm:grid-cols-[1fr_180px_120px] gap-2">
+          <div className="grid grid-cols-1 sm:grid-cols-[1fr_170px_130px_120px] gap-2">
             <input
               type="text"
               value={newName}
@@ -180,6 +263,26 @@ export function AdminMitarbeiterPage() {
               <option value="bezirksleiter">Bezirksleiter</option>
               <option value="admin">Admin</option>
             </select>
+            <label className="flex flex-col gap-1">
+              <input
+                type="number"
+                min="0"
+                step="0.5"
+                value={newSollstunden}
+                onChange={(e) => setNewSollstunden(e.target.value)}
+                placeholder="Sollstd/Monat"
+                className="field-input"
+                disabled={newRolle === 'admin'}
+                title={
+                  newRolle === 'admin'
+                    ? 'Für Admin nicht relevant.'
+                    : 'Vertraglich vereinbarte Stunden pro Monat.'
+                }
+              />
+              <span className="text-[10px] text-muted uppercase tracking-wider mono px-1">
+                Sollstd / Monat
+              </span>
+            </label>
             <button
               type="button"
               onClick={addMitarbeiter}
@@ -188,6 +291,11 @@ export function AdminMitarbeiterPage() {
             >
               + Anlegen
             </button>
+          </div>
+          <div className="text-[11px] text-muted">
+            Sollstunden/Monat werden für Mitarbeiter + Bezirksleiter direkt
+            angelegt (Anfangsbestand 0 zum Ende des Vormonats). Später
+            bearbeitbar in jeder Zeile.
           </div>
         </div>
 
@@ -204,10 +312,20 @@ export function AdminMitarbeiterPage() {
                   <Row
                     key={p.id}
                     profile={p}
+                    sollstunden={sollMap?.get(p.id)?.sollstunden_pro_monat ?? null}
                     isFirst={i === 0}
                     isLast={i === arr.length - 1}
                     onUpdate={(patch) =>
                       update.mutate({ id: p.id, patch })
+                    }
+                    onSaveSollstunden={
+                      p.rolle === 'admin'
+                        ? undefined
+                        : (h) => {
+                            upsertSollstunden(p.id, h).catch((e) =>
+                              setErr(String(e instanceof Error ? e.message : e)),
+                            );
+                          }
                     }
                     onDelete={() => deleteProfile(p)}
                     onMove={(dir) => move(p, dir)}
@@ -255,18 +373,22 @@ function Section({
 
 function Row({
   profile,
+  sollstunden,
   isFirst,
   isLast,
   onUpdate,
+  onSaveSollstunden,
   onDelete,
   onMove,
   onSetPin,
   onClearPin,
 }: {
   profile: Profile;
+  sollstunden: number | null;
   isFirst: boolean;
   isLast: boolean;
   onUpdate: (patch: Partial<Profile>) => void;
+  onSaveSollstunden?: (h: number) => void;
   onDelete: () => void;
   onMove: (dir: -1 | 1) => void;
   onSetPin: () => void;
@@ -274,6 +396,10 @@ function Row({
 }) {
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(profile.name);
+  const [sollEditing, setSollEditing] = useState(false);
+  const [sollDraft, setSollDraft] = useState<string>(
+    sollstunden !== null ? String(sollstunden) : '',
+  );
 
   function save() {
     if (name.trim() && name !== profile.name) {
@@ -282,9 +408,20 @@ function Row({
     setEditing(false);
   }
 
+  function saveSoll() {
+    const val = parseFloat(sollDraft.replace(',', '.'));
+    if (!Number.isFinite(val) || val < 0) {
+      setSollDraft(sollstunden !== null ? String(sollstunden) : '');
+      setSollEditing(false);
+      return;
+    }
+    if (val !== sollstunden) onSaveSollstunden?.(val);
+    setSollEditing(false);
+  }
+
   return (
     <div
-      className="grid grid-cols-[auto_1fr_auto_auto_auto_auto] gap-2 items-center p-2 rounded border border-border-soft"
+      className="grid grid-cols-[auto_1fr_auto_auto_auto_auto_auto] gap-2 items-center p-2 rounded border border-border-soft"
       style={{ opacity: profile.aktiv ? 1 : 0.5 }}
     >
       <div className="flex flex-col">
@@ -343,6 +480,42 @@ function Row({
       <span className="text-[10px] text-muted-2 mono">
         {profile.auth_user_id ? 'Auth ✓' : ''}
       </span>
+      {onSaveSollstunden ? (
+        sollEditing ? (
+          <input
+            type="number"
+            min="0"
+            step="0.5"
+            value={sollDraft}
+            onChange={(e) => setSollDraft(e.target.value)}
+            onBlur={saveSoll}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') saveSoll();
+              if (e.key === 'Escape') {
+                setSollDraft(sollstunden !== null ? String(sollstunden) : '');
+                setSollEditing(false);
+              }
+            }}
+            autoFocus
+            className="field-input text-xs w-20"
+            title="Sollstunden pro Monat"
+          />
+        ) : (
+          <button
+            type="button"
+            onClick={() => {
+              setSollDraft(sollstunden !== null ? String(sollstunden) : '');
+              setSollEditing(true);
+            }}
+            className="text-xs mono hover:text-accent px-1.5 py-1 rounded border border-border-soft"
+            title="Sollstunden pro Monat — klicken zum Bearbeiten"
+          >
+            {sollstunden !== null ? `${sollstunden} h` : '— h'}
+          </button>
+        )
+      ) : (
+        <span />
+      )}
       {profile.pin_hash ? (
         <button
           type="button"
