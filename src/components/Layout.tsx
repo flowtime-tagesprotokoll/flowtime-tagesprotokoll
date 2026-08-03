@@ -122,6 +122,17 @@ export function Layout({ children, rightSlot }: LayoutProps) {
                     <span className="hidden sm:inline">Stunden</span>
                     <span className="sm:hidden">Std</span>
                   </Link>
+                  {(session.kind === 'admin' ||
+                    session.profile.darf_lohnjournal === true) && (
+                    <Link
+                      to="/lohnjournal"
+                      className="rounded-lg bg-surface-2 border border-border hover:border-accent hover:text-accent text-text font-semibold text-xs px-3 py-1.5 transition-colors flex items-center gap-1.5"
+                      title="Lohnjournal — Ist/Soll/Auszahlung pro MA"
+                    >
+                      <span>💶</span>
+                      <span>Lohn</span>
+                    </Link>
+                  )}
                 </>
               )}
               <button

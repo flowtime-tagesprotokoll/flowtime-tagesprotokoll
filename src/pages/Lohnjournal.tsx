@@ -52,6 +52,9 @@ export function LohnjournalPage() {
   const session = useAuth((s) => s.session)!;
   const navigate = useNavigate();
   const qc = useQueryClient();
+  const isAdmin = session.kind === 'admin';
+  const canView = isAdmin || session.profile.darf_lohnjournal === true;
+  const canEdit = isAdmin;
   const [vonMonat, setVonMonat] = useState<string>(vonMonatFallback);
   const [editing, setEditing] = useState<{
     profile_id: string;
@@ -65,7 +68,7 @@ export function LohnjournalPage() {
 
   const { data, isLoading, error } = useQuery({
     queryKey: ['lohnjournal', vonMonat],
-    enabled: session.kind === 'admin',
+    enabled: canView,
     queryFn: async (): Promise<JournalRow[]> => {
       const { data, error } = await supabase.rpc('get_lohnjournal', {
         _von_monat: vonMonat,
@@ -137,12 +140,12 @@ export function LohnjournalPage() {
     },
   });
 
-  if (session.kind !== 'admin') {
+  if (!canView) {
     return (
       <Layout>
         <div className="max-w-3xl mx-auto px-6 py-10">
           <div className="bg-minus/10 border border-minus/30 text-minus rounded p-4 text-sm">
-            Lohnjournal nur für Admin sichtbar.
+            Kein Zugriff auf das Lohnjournal.
           </div>
         </div>
       </Layout>
@@ -245,7 +248,15 @@ export function LohnjournalPage() {
                             soll_stunden: r.soll_stunden,
                           })
                         }
-                        className="w-full grid gap-2 px-3 py-2 items-center text-sm tabular-nums hover:bg-surface-2 text-left transition-colors"
+                        className={
+                          'w-full grid gap-2 px-3 py-2 items-center text-sm tabular-nums text-left transition-colors ' +
+                          (canEdit ? 'hover:bg-surface-2 cursor-pointer' : 'cursor-default')
+                        }
+                        title={
+                          canEdit
+                            ? undefined
+                            : 'Nur Ansicht — Bearbeiten ist Admin vorbehalten.'
+                        }
                         style={{
                           gridTemplateColumns:
                             '1.4fr 1fr 0.9fr 1fr 0.9fr 1fr 1fr',
@@ -323,6 +334,7 @@ export function LohnjournalPage() {
       {editing && (
         <EditMonatModal
           editing={editing}
+          canEdit={canEdit}
           busy={saveMut.isPending}
           err={saveMut.error instanceof Error ? saveMut.error.message : null}
           onCancel={() => setEditing(null)}
@@ -363,6 +375,7 @@ interface EditProps {
     notiz: string | null;
     soll_stunden: number;
   };
+  canEdit: boolean;
   busy: boolean;
   err: string | null;
   onCancel: () => void;
@@ -443,7 +456,7 @@ function fmtDatumKurz(iso: string): string {
   return `${wt} ${iso.slice(8, 10)}.${iso.slice(5, 7)}.`;
 }
 
-function EditMonatModal({ editing, busy, err, onCancel, onSave, onReset }: EditProps) {
+function EditMonatModal({ editing, canEdit, busy, err, onCancel, onSave, onReset }: EditProps) {
   const [useOverride, setUseOverride] = useState(
     editing.ausgezahlt !== editing.soll_stunden,
   );
@@ -535,55 +548,90 @@ function EditMonatModal({ editing, busy, err, onCancel, onSave, onReset }: EditP
           )}
         </div>
 
-        <div className="space-y-2 border-t border-border-soft pt-3">
-          <label className="flex items-center gap-2 text-sm">
-            <input
-              type="checkbox"
-              checked={useOverride}
-              onChange={(e) => setUseOverride(e.target.checked)}
-            />
-            Abweichende Auszahlung eintragen
-          </label>
-          {useOverride && (
-            <label className="block">
-              <span className="text-xs text-muted">Ausgezahlte Stunden</span>
-              <input
-                type="number"
-                min="0"
-                step="0.25"
-                value={ausgezahlt}
-                onChange={(e) => setAusgezahlt(e.target.value)}
-                className="field-input text-sm"
-              />
-            </label>
-          )}
-        </div>
+        {canEdit ? (
+          <>
+            <div className="space-y-2 border-t border-border-soft pt-3">
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={useOverride}
+                  onChange={(e) => setUseOverride(e.target.checked)}
+                />
+                Abweichende Auszahlung eintragen
+              </label>
+              {useOverride && (
+                <label className="block">
+                  <span className="text-xs text-muted">Ausgezahlte Stunden</span>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.25"
+                    value={ausgezahlt}
+                    onChange={(e) => setAusgezahlt(e.target.value)}
+                    className="field-input text-sm"
+                  />
+                </label>
+              )}
+            </div>
 
-        <div className="space-y-2 border-t border-border-soft pt-3">
-          <label className="block">
-            <span className="text-xs text-muted">
-              Zusatz-Stunden (Schulung, Krankheit etc.) — kann negativ sein
-            </span>
-            <input
-              type="number"
-              step="0.25"
-              value={zusatz}
-              onChange={(e) => setZusatz(e.target.value)}
-              placeholder="0"
-              className="field-input text-sm"
-            />
-          </label>
-          <label className="block">
-            <span className="text-xs text-muted">Notiz (optional)</span>
-            <input
-              type="text"
-              value={notiz}
-              onChange={(e) => setNotiz(e.target.value)}
-              placeholder="z.B. Schulung Geldwäsche 8h"
-              className="field-input text-sm"
-            />
-          </label>
-        </div>
+            <div className="space-y-2 border-t border-border-soft pt-3">
+              <label className="block">
+                <span className="text-xs text-muted">
+                  Zusatz-Stunden (Schulung, Krankheit etc.) — kann negativ sein
+                </span>
+                <input
+                  type="number"
+                  step="0.25"
+                  value={zusatz}
+                  onChange={(e) => setZusatz(e.target.value)}
+                  placeholder="0"
+                  className="field-input text-sm"
+                />
+              </label>
+              <label className="block">
+                <span className="text-xs text-muted">Notiz (optional)</span>
+                <input
+                  type="text"
+                  value={notiz}
+                  onChange={(e) => setNotiz(e.target.value)}
+                  placeholder="z.B. Schulung Geldwäsche 8h"
+                  className="field-input text-sm"
+                />
+              </label>
+            </div>
+          </>
+        ) : (
+          <div className="space-y-1 border-t border-border-soft pt-3 text-sm">
+            <div className="text-xs uppercase tracking-wider text-muted font-semibold mb-1">
+              Auszahlung / Zusätze (Nur-Ansicht)
+            </div>
+            <div className="grid grid-cols-2 gap-2 text-sm">
+              <div>
+                <div className="text-[10px] text-muted uppercase">Ausgezahlt</div>
+                <div className="tabular-nums font-semibold">
+                  {fmtH(editing.ausgezahlt)} h
+                </div>
+              </div>
+              <div>
+                <div className="text-[10px] text-muted uppercase">Zusatz</div>
+                <div className="tabular-nums font-semibold">
+                  {editing.zusatz_stunden !== 0
+                    ? (editing.zusatz_stunden > 0 ? '+' : '') + fmtH(editing.zusatz_stunden) + ' h'
+                    : '—'}
+                </div>
+              </div>
+            </div>
+            {editing.notiz && (
+              <div>
+                <div className="text-[10px] text-muted uppercase mt-1">Notiz</div>
+                <div className="text-xs italic text-muted">{editing.notiz}</div>
+              </div>
+            )}
+            <div className="text-[10px] text-muted italic pt-1">
+              Änderungen sind Admin vorbehalten.
+            </div>
+          </div>
+        )}
 
         {err && (
           <div className="text-sm text-minus bg-minus/10 border border-minus/30 rounded px-3 py-2">
@@ -592,15 +640,17 @@ function EditMonatModal({ editing, busy, err, onCancel, onSave, onReset }: EditP
         )}
 
         <div className="flex gap-2 pt-2 border-t border-border-soft">
-          <button
-            type="button"
-            onClick={onReset}
-            disabled={busy}
-            className="text-xs text-muted hover:text-minus"
-            title="Alle Overrides und Zusatz-Stunden zurücksetzen"
-          >
-            ↺ Zurücksetzen
-          </button>
+          {canEdit && (
+            <button
+              type="button"
+              onClick={onReset}
+              disabled={busy}
+              className="text-xs text-muted hover:text-minus"
+              title="Alle Overrides und Zusatz-Stunden zurücksetzen"
+            >
+              ↺ Zurücksetzen
+            </button>
+          )}
           <div className="flex-1" />
           <button
             type="button"
@@ -608,8 +658,9 @@ function EditMonatModal({ editing, busy, err, onCancel, onSave, onReset }: EditP
             disabled={busy}
             className="btn-ghost text-sm px-3 py-1.5"
           >
-            Abbrechen
+            {canEdit ? 'Abbrechen' : 'Schließen'}
           </button>
+          {canEdit && (
           <button
             type="button"
             onClick={() =>
@@ -625,6 +676,7 @@ function EditMonatModal({ editing, busy, err, onCancel, onSave, onReset }: EditP
           >
             {busy ? 'Speichere …' : '💾 Speichern'}
           </button>
+          )}
         </div>
       </div>
     </div>
