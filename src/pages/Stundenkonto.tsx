@@ -1,5 +1,5 @@
-import { useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useEffect, useMemo, useState } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Layout } from '../components/Layout';
 import { useAuth } from '../lib/authStore';
@@ -11,9 +11,12 @@ interface StundenkontoRow {
   monat: string;          // 'YYYY-MM'
   ist_stunden: number;
   soll_stunden: number;
+  ausgezahlt: number;
+  zusatz_stunden: number;
   diff: number;
   kum_saldo: number;
   ist_laufend: boolean;
+  notiz: string | null;
 }
 
 const MONATSNAMEN_LANG = [
@@ -55,12 +58,19 @@ export function StundenkontoPage() {
   const session = useAuth((s) => s.session)!;
   const isAdmin = session.kind === 'admin';
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { data: profiles } = useProfiles();
 
   // MA sieht nur sich selbst, Admin kann zwischen MAs umschalten.
+  // Query-Param ?ma=... erlaubt Direktlinks vom Lohnjournal.
   const [selectedProfileId, setSelectedProfileId] = useState<string>(
-    session.profile.id,
+    () => searchParams.get('ma') ?? session.profile.id,
   );
+  useEffect(() => {
+    const ma = searchParams.get('ma');
+    if (ma && ma !== selectedProfileId) setSelectedProfileId(ma);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
 
   const mitarbeiterListe = useMemo(() => {
     return (profiles ?? [])
@@ -98,9 +108,12 @@ export function StundenkontoPage() {
           monat: String(r.monat),
           ist_stunden: Number(r.ist_stunden),
           soll_stunden: Number(r.soll_stunden),
+          ausgezahlt: Number(r.ausgezahlt ?? r.soll_stunden ?? 0),
+          zusatz_stunden: Number(r.zusatz_stunden ?? 0),
           diff: Number(r.diff),
           kum_saldo: Number(r.kum_saldo),
           ist_laufend: Boolean(r.ist_laufend),
+          notiz: r.notiz ? String(r.notiz) : null,
         })),
         anfangssaldo: Number(basisRes.data.anfangssaldo),
         anfangsstichtag: String(basisRes.data.anfangsstichtag),
@@ -118,7 +131,7 @@ export function StundenkontoPage() {
   // Live-Saldo minus (Soll - 0) im laufenden Monat = liveSaldo - lastRow.soll
   const projizierterMonatsendsaldo = lastRow
     ? lastRow.ist_laufend
-      ? lastRow.kum_saldo - lastRow.soll_stunden
+      ? lastRow.kum_saldo - (lastRow.ausgezahlt || lastRow.soll_stunden)
       : lastRow.kum_saldo
     : 0;
 
@@ -241,11 +254,12 @@ export function StundenkontoPage() {
             <div className="bg-surface border border-border rounded-lg overflow-hidden">
               <div
                 className="grid gap-2 px-3 py-2 text-[10px] uppercase tracking-wider text-muted bg-surface-2"
-                style={{ gridTemplateColumns: '1.4fr 1fr 1fr 1fr 1fr' }}
+                style={{ gridTemplateColumns: '1.3fr 0.9fr 0.8fr 1fr 0.9fr 1fr' }}
               >
                 <div>Monat</div>
                 <div className="text-right">Ist</div>
                 <div className="text-right">Soll</div>
+                <div className="text-right">Ausgezahlt</div>
                 <div className="text-right">Diff</div>
                 <div className="text-right">Saldo</div>
               </div>
@@ -268,6 +282,7 @@ export function StundenkontoPage() {
                   <div className="text-right text-muted">—</div>
                   <div className="text-right text-muted">—</div>
                   <div className="text-right text-muted">—</div>
+                  <div className="text-right text-muted">—</div>
                   <div
                     className="text-right font-bold"
                     style={{ color: saldoColor(anfangssaldo) }}
@@ -276,43 +291,71 @@ export function StundenkontoPage() {
                   </div>
                 </div>
 
-                {rows.map((r) => (
-                  <div
-                    key={r.monat}
-                    className="grid gap-2 px-3 py-2 items-center text-sm tabular-nums"
-                    style={{ gridTemplateColumns: '1.4fr 1fr 1fr 1fr 1fr' }}
-                  >
-                    <div className="font-semibold text-text">
-                      {monatLabel(r.monat)}
-                      {r.ist_laufend && (
-                        <span className="ml-2 text-[10px] uppercase tracking-wider text-accent mono">
-                          läuft
-                        </span>
-                      )}
-                    </div>
-                    <div className="text-right">{fmtH(r.ist_stunden)} h</div>
-                    <div className="text-right text-muted">{fmtH(r.soll_stunden)} h</div>
+                {rows.map((r) => {
+                  const hasOverride = !r.ist_laufend && r.ausgezahlt !== r.soll_stunden;
+                  return (
                     <div
-                      className="text-right font-semibold"
-                      style={{
-                        color: r.ist_laufend ? '#888' : saldoColor(r.diff),
-                      }}
-                      title={
-                        r.ist_laufend
-                          ? 'Diff wird erst am Monatsende fix.'
-                          : undefined
-                      }
+                      key={r.monat}
+                      className="grid gap-2 px-3 py-2 items-center text-sm tabular-nums"
+                      style={{ gridTemplateColumns: '1.3fr 0.9fr 0.8fr 1fr 0.9fr 1fr' }}
                     >
-                      {r.ist_laufend ? '—' : fmtSigned(r.diff)} h
+                      <div className="font-semibold text-text">
+                        {monatLabel(r.monat)}
+                        {r.ist_laufend && (
+                          <span className="ml-2 text-[10px] uppercase tracking-wider text-accent mono">
+                            läuft
+                          </span>
+                        )}
+                        {r.notiz && (
+                          <span
+                            className="ml-2 text-[10px] text-muted"
+                            title={r.notiz}
+                          >
+                            📝
+                          </span>
+                        )}
+                        {r.zusatz_stunden !== 0 && (
+                          <div className="text-[10px] text-muted font-normal mt-0.5">
+                            inkl. Zusatz {fmtSigned(r.zusatz_stunden)} h
+                          </div>
+                        )}
+                      </div>
+                      <div className="text-right">{fmtH(r.ist_stunden)} h</div>
+                      <div className="text-right text-muted">{fmtH(r.soll_stunden)} h</div>
+                      <div
+                        className="text-right"
+                        style={{ color: hasOverride ? '#fbbf24' : undefined }}
+                        title={
+                          hasOverride
+                            ? `Abweichung — Standard wäre ${fmtH(r.soll_stunden)} h`
+                            : undefined
+                        }
+                      >
+                        {r.ist_laufend ? '—' : fmtH(r.ausgezahlt) + ' h'}
+                        {hasOverride && <span className="ml-1">⚠</span>}
+                      </div>
+                      <div
+                        className="text-right font-semibold"
+                        style={{
+                          color: r.ist_laufend ? '#888' : saldoColor(r.diff),
+                        }}
+                        title={
+                          r.ist_laufend
+                            ? 'Diff wird erst am Monatsende fix.'
+                            : undefined
+                        }
+                      >
+                        {r.ist_laufend ? '—' : fmtSigned(r.diff)} h
+                      </div>
+                      <div
+                        className="text-right font-bold"
+                        style={{ color: saldoColor(r.kum_saldo) }}
+                      >
+                        {fmtSigned(r.kum_saldo)} h
+                      </div>
                     </div>
-                    <div
-                      className="text-right font-bold"
-                      style={{ color: saldoColor(r.kum_saldo) }}
-                    >
-                      {fmtSigned(r.kum_saldo)} h
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
               <div className="px-3 py-2 text-[11px] text-muted bg-surface-2 border-t border-border-soft">
                 <strong>Übertrag</strong> = Saldo aus dem Vormonats-Abschluss,
@@ -324,14 +367,15 @@ export function StundenkontoPage() {
             <div className="text-[11px] text-muted space-y-1">
               <div>
                 <strong>Wie wird gerechnet?</strong> Pro Monat: Ist-Stunden aus
-                den Protokoll-Schichten (zeit_von bis zeit_bis) minus die
-                vereinbarten Soll-Stunden ergibt die Monats-Differenz. Diese
-                wird auf den kumulierten Saldo aufaddiert und in den
-                Folgemonat übertragen.
+                den Protokoll-Schichten (plus ggf. Zusatz-Stunden für Schulung
+                etc.) minus die <strong>ausgezahlten</strong> Stunden ergeben
+                die Monats-Differenz. Standard: es werden immer die vertraglich
+                vereinbarten Soll-Stunden ausgezahlt. Abweichungen für einzelne
+                Monate werden vom Admin manuell hinterlegt (⚠ gelb markiert).
               </div>
               <div>
-                Im <strong>laufenden Monat</strong> werden die Soll-Stunden{' '}
-                <strong>noch nicht</strong> abgezogen — der Saldo wäre sonst
+                Im <strong>laufenden Monat</strong> wird die Auszahlung{' '}
+                <strong>noch nicht</strong> verrechnet — der Saldo wäre sonst
                 solange künstlich rot, bis der Monat voll ist.
               </div>
             </div>

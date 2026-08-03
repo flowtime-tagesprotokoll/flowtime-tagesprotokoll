@@ -14,6 +14,7 @@ import { ArbeitsplanPage } from './pages/Arbeitsplan';
 import { ZertifikatePage } from './pages/Zertifikate';
 import { StundenkontoPage } from './pages/Stundenkonto';
 import { VorfuehrDashboardPage } from './pages/VorfuehrDashboard';
+import { LohnjournalPage } from './pages/Lohnjournal';
 import { useAuth } from './lib/authStore';
 import { checkForUpdates } from './lib/updater';
 import { SingleInstanceGate } from './components/SingleInstance';
@@ -177,6 +178,14 @@ export default function App() {
             element={
               <RequireAuth>
                 <StundenkontoPage />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/lohnjournal"
+            element={
+              <RequireAuth>
+                <LohnjournalPage />
               </RequireAuth>
             }
           />

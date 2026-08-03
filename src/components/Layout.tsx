@@ -236,6 +236,7 @@ function AdminMenu() {
             <MenuLink to="/" onClick={handleLink} icon="🏠" label="Dashboard" />
             <MenuLink to="/reports" onClick={handleLink} icon="📊" label="Monatsreport" />
             <MenuLink to="/dokubericht" onClick={handleLink} icon="📑" label="Doku-Bericht (PDF)" />
+            <MenuLink to="/lohnjournal" onClick={handleLink} icon="💶" label="Lohnjournal" />
             <MenuLink to="/audit" onClick={handleLink} icon="📋" label="Audit-Log" />
             <div className="my-1 border-t border-border-soft" />
             <MenuLink to="/admin/mitarbeiter" onClick={handleLink} icon="👥" label="Mitarbeiter" />
