@@ -125,15 +125,14 @@ export function StundenkontoPage() {
   const anfangssaldo = data?.anfangssaldo ?? 0;
   const anfangsstichtag = data?.anfangsstichtag ?? '';
   const lastRow = rows[rows.length - 1];
-  // Live-Saldo = letzter kum_saldo (im laufenden Monat ohne Soll-Abzug).
+  // Live-Saldo = letzter kum_saldo. Enthaelt bereits die pauschale
+  // Monatsauszahlung (Soll bzw. Override) — auch fuer den laufenden Monat.
   const liveSaldo = lastRow ? lastRow.kum_saldo : 0;
-  // Vollstaendiger Saldo "wenn der Monat gerade zu Ende waere" =
-  // Live-Saldo minus (Soll - 0) im laufenden Monat = liveSaldo - lastRow.soll
-  const projizierterMonatsendsaldo = lastRow
-    ? lastRow.ist_laufend
-      ? lastRow.kum_saldo - (lastRow.ausgezahlt || lastRow.soll_stunden)
-      : lastRow.kum_saldo
-    : 0;
+  // Saldo per Ende Vormonat (letzter abgeschlossener Monat).
+  const abgeschlossenerVormonatsSaldo = rows.length >= 2
+    ? rows[rows.length - 2].kum_saldo
+    : anfangssaldo;
+  const vorletzterRow = rows.length >= 2 ? rows[rows.length - 2] : null;
 
   const saldoColor = (n: number) => (n >= 0 ? '#4ade80' : '#f87171');
 
@@ -229,24 +228,33 @@ export function StundenkontoPage() {
                   </div>
                 </div>
                 {lastRow.ist_laufend && (
-                  <div className="text-xs text-muted text-right max-w-[200px]">
-                    <div className="font-semibold text-text mb-0.5">
-                      Hochrechnung Ende {MONATSNAMEN_LANG[Number(lastRow.monat.slice(5, 7)) - 1]}
+                  <div className="text-xs text-muted text-right max-w-[240px] space-y-1.5">
+                    <div>
+                      <div className="text-[10px] uppercase tracking-wider">
+                        Stand Ende {vorletzterRow
+                          ? MONATSNAMEN_LANG[Number(vorletzterRow.monat.slice(5, 7)) - 1]
+                          : 'Vormonat'}
+                      </div>
+                      <div
+                        className="tabular-nums text-base font-bold"
+                        style={{ color: saldoColor(abgeschlossenerVormonatsSaldo) }}
+                      >
+                        {fmtSigned(abgeschlossenerVormonatsSaldo)} h
+                      </div>
                     </div>
-                    <div
-                      className="tabular-nums text-base font-bold"
-                      style={{ color: saldoColor(projizierterMonatsendsaldo) }}
-                    >
-                      {fmtSigned(projizierterMonatsendsaldo)} h
-                    </div>
-                    <div className="text-[10px] mt-0.5 leading-tight">
-                      wenn bis Monatsende keine weiteren Schichten
+                    <div className="text-[10px] leading-tight pt-1 border-t border-border-soft">
+                      {MONATSNAMEN_LANG[Number(lastRow.monat.slice(5, 7)) - 1]}: bisher{' '}
+                      <strong className="text-text">{fmtH(lastRow.ist_stunden)} h</strong>{' '}
+                      gearbeitet, <strong className="text-text">{fmtH(lastRow.ausgezahlt)} h</strong>{' '}
+                      werden ausgezahlt.
                     </div>
                   </div>
                 )}
               </div>
               <div className="text-xs text-muted">
-                Plus = Guthaben · Minus = noch zu leistende Stunden.
+                Plus = Guthaben · Minus = noch zu leistende Stunden. Die
+                Monatsauszahlung wird sofort verrechnet — im laufenden Monat
+                klettert der Saldo mit jeder gearbeiteten Stunde nach oben.
               </div>
             </div>
 
@@ -374,9 +382,10 @@ export function StundenkontoPage() {
                 Monate werden vom Admin manuell hinterlegt (⚠ gelb markiert).
               </div>
               <div>
-                Im <strong>laufenden Monat</strong> wird die Auszahlung{' '}
-                <strong>noch nicht</strong> verrechnet — der Saldo wäre sonst
-                solange künstlich rot, bis der Monat voll ist.
+                Auch im <strong>laufenden Monat</strong> wird die Auszahlung{' '}
+                <strong>sofort</strong> verrechnet — der Saldo startet also zu
+                Monatsbeginn niedriger und wächst mit jeder gearbeiteten
+                Stunde. Am Monatsende steht dann der endgültige Wert.
               </div>
             </div>
           </>

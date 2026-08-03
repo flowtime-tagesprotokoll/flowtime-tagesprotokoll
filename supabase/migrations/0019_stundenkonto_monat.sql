@@ -100,12 +100,10 @@ begin
 
     v_ist := v_ist + coalesce(v_zusatz, 0);
 
-    -- Ausgezahlt: im laufenden Monat noch 0, sonst Override oder Soll.
-    if v_is_current then
-      v_ausgezahlt := 0;
-    else
-      v_ausgezahlt := coalesce(v_override, v_basis.sollstunden_pro_monat);
-    end if;
+    -- Ausgezahlt = Override wenn gesetzt, sonst Soll — auch im laufenden Monat.
+    -- Damit sieht der Saldo NICHT kuenstlich hoch aus, weil die pauschale
+    -- Monatsauszahlung ja am Monatsende sowieso abgezogen wird.
+    v_ausgezahlt := coalesce(v_override, v_basis.sollstunden_pro_monat);
 
     v_kum := v_kum + (v_ist - v_ausgezahlt);
 
