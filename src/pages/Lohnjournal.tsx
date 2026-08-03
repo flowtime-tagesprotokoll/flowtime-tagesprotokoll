@@ -355,6 +355,7 @@ export function LohnjournalPage() {
 
 interface EditProps {
   editing: {
+    profile_id: string;
     profile_name: string;
     monat: string;
     ausgezahlt: number;
@@ -374,6 +375,74 @@ interface EditProps {
   onReset: () => void;
 }
 
+interface SchichtDetail {
+  datum: string;
+  shop_kurz: string;
+  shop_name: string;
+  schicht_nr: number;
+  zeit_von: string;
+  zeit_bis: string;
+  stunden: number;
+}
+
+function useSchichten(profile_id: string, monat: string) {
+  return useQuery({
+    queryKey: ['schichten-monat', profile_id, monat],
+    queryFn: async (): Promise<SchichtDetail[]> => {
+      const [y, m] = monat.split('-').map(Number);
+      const from = `${y}-${String(m).padStart(2, '0')}-01`;
+      const nextY = m === 12 ? y + 1 : y;
+      const nextM = m === 12 ? 1 : m + 1;
+      const to = `${nextY}-${String(nextM).padStart(2, '0')}-01`;
+      const { data, error } = await supabase
+        .from('schichten')
+        .select(
+          'schicht_nr, zeit_von, zeit_bis, protokolle!inner(datum, shops!inner(kurz, name))',
+        )
+        .eq('mitarbeiter_id', profile_id)
+        .gte('protokolle.datum', from)
+        .lt('protokolle.datum', to);
+      if (error) throw error;
+      const rows = (data ?? []) as unknown as Array<{
+        schicht_nr: number;
+        zeit_von: string | null;
+        zeit_bis: string | null;
+        protokolle: { datum: string; shops: { kurz: string; name: string } };
+      }>;
+      return rows
+        .filter((r) => r.zeit_von && r.zeit_bis)
+        .map((r) => {
+          const von = r.zeit_von!;
+          const bis = r.zeit_bis!;
+          const [vh, vm] = von.split(':').map(Number);
+          const [bh, bm] = bis.split(':').map(Number);
+          let stunden = bh + bm / 60 - (vh + vm / 60);
+          if (stunden < 0) stunden += 24; // ueber Mitternacht
+          return {
+            datum: r.protokolle.datum,
+            shop_kurz: r.protokolle.shops.kurz,
+            shop_name: r.protokolle.shops.name,
+            schicht_nr: r.schicht_nr,
+            zeit_von: von.slice(0, 5),
+            zeit_bis: bis.slice(0, 5),
+            stunden,
+          };
+        })
+        .sort((a, b) =>
+          a.datum === b.datum
+            ? a.schicht_nr - b.schicht_nr
+            : a.datum.localeCompare(b.datum),
+        );
+    },
+  });
+}
+
+function fmtDatumKurz(iso: string): string {
+  const d = new Date(iso + 'T00:00:00');
+  const wt = ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'][d.getDay()];
+  return `${wt} ${iso.slice(8, 10)}.${iso.slice(5, 7)}.`;
+}
+
 function EditMonatModal({ editing, busy, err, onCancel, onSave, onReset }: EditProps) {
   const [useOverride, setUseOverride] = useState(
     editing.ausgezahlt !== editing.soll_stunden,
@@ -381,6 +450,12 @@ function EditMonatModal({ editing, busy, err, onCancel, onSave, onReset }: EditP
   const [ausgezahlt, setAusgezahlt] = useState(String(editing.ausgezahlt));
   const [zusatz, setZusatz] = useState(String(editing.zusatz_stunden));
   const [notiz, setNotiz] = useState(editing.notiz ?? '');
+
+  const { data: schichten, isLoading: schichtenLoading } = useSchichten(
+    editing.profile_id,
+    editing.monat,
+  );
+  const schichtenSumme = (schichten ?? []).reduce((a, s) => a + s.stunden, 0);
 
   function parse(s: string): number {
     return parseFloat(s.replace(',', '.'));
@@ -392,7 +467,7 @@ function EditMonatModal({ editing, busy, err, onCancel, onSave, onReset }: EditP
       onClick={onCancel}
     >
       <div
-        className="bg-surface border border-border rounded-xl p-6 w-full max-w-md space-y-4 shadow-2xl"
+        className="bg-surface border border-border rounded-xl p-6 w-full max-w-2xl space-y-4 shadow-2xl max-h-[90vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
         <div>
@@ -402,6 +477,62 @@ function EditMonatModal({ editing, busy, err, onCancel, onSave, onReset }: EditP
           <p className="text-xs text-muted mt-0.5">
             Standard: {fmtH(editing.soll_stunden)} h Sollstunden werden ausgezahlt.
           </p>
+        </div>
+
+        {/* Schichten des Monats */}
+        <div className="space-y-2 border-t border-border-soft pt-3">
+          <div className="flex items-center justify-between">
+            <div className="text-xs uppercase tracking-wider text-muted font-semibold">
+              📋 Schichten aus den Protokollen
+            </div>
+            {(schichten ?? []).length > 0 && (
+              <div className="text-xs mono tabular-nums">
+                Σ <strong className="text-accent">{fmtH(schichtenSumme)} h</strong>
+                <span className="text-muted"> · {schichten!.length} Schichten</span>
+              </div>
+            )}
+          </div>
+          {schichtenLoading ? (
+            <div className="text-xs text-muted">Lade …</div>
+          ) : (schichten ?? []).length === 0 ? (
+            <div className="text-xs text-muted italic">
+              Keine Schichten im Protokoll für diesen Monat.
+            </div>
+          ) : (
+            <div className="bg-surface-2 border border-border-soft rounded overflow-hidden">
+              <div
+                className="grid gap-2 px-3 py-1.5 text-[10px] uppercase tracking-wider text-muted bg-surface-3"
+                style={{ gridTemplateColumns: '90px 60px 60px 1fr 70px' }}
+              >
+                <div>Datum</div>
+                <div>Shop</div>
+                <div className="text-center">Sch.</div>
+                <div>Von – Bis</div>
+                <div className="text-right">Stunden</div>
+              </div>
+              <div className="divide-y divide-border-soft max-h-64 overflow-y-auto">
+                {schichten!.map((s, i) => (
+                  <div
+                    key={i}
+                    className="grid gap-2 px-3 py-1 text-xs items-center tabular-nums"
+                    style={{ gridTemplateColumns: '90px 60px 60px 1fr 70px' }}
+                  >
+                    <div className="font-semibold">{fmtDatumKurz(s.datum)}</div>
+                    <div className="text-muted" title={s.shop_name}>
+                      {s.shop_kurz}
+                    </div>
+                    <div className="text-center text-muted">{s.schicht_nr}</div>
+                    <div className="mono">
+                      {s.zeit_von} – {s.zeit_bis}
+                    </div>
+                    <div className="text-right font-semibold">
+                      {fmtH(s.stunden)} h
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="space-y-2 border-t border-border-soft pt-3">
