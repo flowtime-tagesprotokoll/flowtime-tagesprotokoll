@@ -98,6 +98,41 @@ export function ReportsPage() {
   const { data: protokolle, isLoading } = useMonatsProtokolle(month);
   const { data: vorfaelle } = useMonatsVorfaelle(month);
 
+  // Stundenkonto-Info pro MA fuer diesen Monat (Soll + Delta + kumSaldo)
+  interface LohnRow {
+    profile_id: string;
+    monat: string;
+    ist_stunden: number;
+    soll_stunden: number;
+    ausgezahlt: number;
+    diff: number;
+    kum_saldo: number;
+  }
+  const { data: lohnrows } = useQuery({
+    queryKey: ['lohnjournal-report', month],
+    enabled: session.kind === 'admin',
+    queryFn: async (): Promise<Map<string, LohnRow>> => {
+      const { data, error } = await supabase.rpc('get_lohnjournal', {
+        _von_monat: month,
+      });
+      if (error) throw error;
+      const map = new Map<string, LohnRow>();
+      for (const r of ((data ?? []) as Array<Record<string, unknown>>)) {
+        if (String(r.monat) !== month) continue;
+        map.set(String(r.profile_id), {
+          profile_id: String(r.profile_id),
+          monat: String(r.monat),
+          ist_stunden: Number(r.ist_stunden),
+          soll_stunden: Number(r.soll_stunden),
+          ausgezahlt: Number(r.ausgezahlt),
+          diff: Number(r.diff),
+          kum_saldo: Number(r.kum_saldo),
+        });
+      }
+      return map;
+    },
+  });
+
   if (session.kind !== 'admin' && session.profile.rolle !== 'bezirksleiter') {
     return (
       <Layout>
@@ -337,26 +372,70 @@ export function ReportsPage() {
             </div>
           ) : (
             <div className="bg-surface-2 border border-border-soft rounded overflow-hidden">
-              <div className="grid grid-cols-[1fr_90px_90px_90px] gap-2 px-3 py-2 text-[10px] uppercase tracking-wider text-muted bg-surface-3">
+              <div className="grid grid-cols-[1.4fr_70px_70px_80px_80px_80px_90px] gap-2 px-3 py-2 text-[10px] uppercase tracking-wider text-muted bg-surface-3">
                 <div>Mitarbeiter</div>
                 <div className="text-right">Schichten</div>
                 <div className="text-right">Shops</div>
-                <div className="text-right">Stunden</div>
+                <div className="text-right">Ist</div>
+                <div className="text-right">Soll</div>
+                <div className="text-right">Diff</div>
+                <div className="text-right">Saldo kum.</div>
               </div>
               <div className="divide-y divide-border-soft">
-                {mitarbeiterStats.map((m) => (
-                  <div
-                    key={m.id}
-                    className="grid grid-cols-[1fr_90px_90px_90px] gap-2 px-3 py-2 text-sm"
-                  >
-                    <div>{m.name}</div>
-                    <div className="mono text-right">{m.schichten}</div>
-                    <div className="mono text-right">{m.shops.size}</div>
-                    <div className="mono text-right font-semibold">
-                      {formatStunden(m.stunden)}
-                    </div>
-                  </div>
-                ))}
+                {mitarbeiterStats.map((m) => {
+                  const lohn = lohnrows?.get(m.id);
+                  return (
+                    <button
+                      type="button"
+                      key={m.id}
+                      onClick={() => navigate('/stunden?ma=' + m.id)}
+                      className="w-full grid grid-cols-[1.4fr_70px_70px_80px_80px_80px_90px] gap-2 px-3 py-2 text-sm text-left hover:bg-surface-3 transition-colors"
+                      title="Klicken für vollständiges Stundenkonto"
+                    >
+                      <div className="hover:text-accent">{m.name} →</div>
+                      <div className="mono text-right">{m.schichten}</div>
+                      <div className="mono text-right">{m.shops.size}</div>
+                      <div className="mono text-right font-semibold">
+                        {formatStunden(m.stunden)}
+                      </div>
+                      <div className="mono text-right text-muted">
+                        {lohn ? formatStunden(lohn.soll_stunden) : '—'}
+                      </div>
+                      <div
+                        className="mono text-right font-semibold"
+                        style={{
+                          color: lohn
+                            ? lohn.diff >= 0
+                              ? '#4ade80'
+                              : '#f87171'
+                            : undefined,
+                        }}
+                      >
+                        {lohn ? (lohn.diff > 0 ? '+' : '') + formatStunden(lohn.diff) : '—'}
+                      </div>
+                      <div
+                        className="mono text-right font-bold"
+                        style={{
+                          color: lohn
+                            ? lohn.kum_saldo >= 0
+                              ? '#4ade80'
+                              : '#f87171'
+                            : undefined,
+                        }}
+                      >
+                        {lohn
+                          ? (lohn.kum_saldo > 0 ? '+' : '') +
+                            formatStunden(lohn.kum_saldo)
+                          : '—'}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+              <div className="px-3 py-2 text-[11px] text-muted border-t border-border-soft">
+                <strong>Diff</strong> = Ist − ausgezahlte Stunden (Standard =
+                Soll) · <strong>Saldo kum.</strong> = Guthaben nach diesem
+                Monat · Klick auf Namen öffnet vollständiges Stundenkonto.
               </div>
             </div>
           )}
