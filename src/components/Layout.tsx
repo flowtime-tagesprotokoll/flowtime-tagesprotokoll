@@ -138,10 +138,10 @@ export function Layout({ children, rightSlot }: LayoutProps) {
                     <Link
                       to="/zertifikate"
                       className="rounded-lg bg-surface-2 border border-border hover:border-accent hover:text-accent text-text font-semibold text-xs px-3 py-1.5 transition-colors flex items-center gap-1.5"
-                      title="Zertifikate — Schulungen & Führungszeugnisse"
+                      title="Zertifikate und Führungszeugnisse"
                     >
                       <span>📜</span>
-                      <span>Zert.</span>
+                      <span>Zertifikate und Führungszeugnisse</span>
                     </Link>
                   )}
                 </>
