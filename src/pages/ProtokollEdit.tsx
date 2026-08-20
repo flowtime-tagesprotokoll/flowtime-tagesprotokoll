@@ -516,6 +516,7 @@ export function ProtokollEditPage() {
       [...hist, ...heuteForm],
       cfg?.saldo ?? {},
       cfg?.stichtag,
+      cfg?.kundenReset ?? {},
     );
   }, [aufladungBewegungen, datum, s1Form, s2Form, shops, shopId]);
 

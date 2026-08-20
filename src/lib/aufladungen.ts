@@ -34,6 +34,15 @@ interface CustomerDef {
 export interface ShopStartsaldo {
   stichtag: string; // ISO-Datum 'YYYY-MM-DD'
   saldo: Record<string, number>;
+  /**
+   * Pro-Kunde-Reset: Alle Bewegungen dieses Kunden VOR dem angegebenen
+   * Datum werden fuer die Aufladungs-Berechnung ignoriert. Nuetzlich, wenn
+   * ein Kunde in der Vergangenheit ohne Gegenbuchung Einlagen hatte
+   * (z.B. manuelle Abrechnung ausserhalb des Systems), die sonst
+   * kuenstliche Guthaben-Saldi erzeugen und neue Aufladungen falsch
+   * verrechnen wuerden.
+   */
+  kundenReset?: Record<string, string>;
 }
 
 export const STARTSALDO_PER_SHOP: Record<string, ShopStartsaldo> = {
@@ -52,6 +61,14 @@ export const STARTSALDO_PER_SHOP: Record<string, ShopStartsaldo> = {
       // 100€-Einlage tilgt das vollständig. Ohne diesen Altbestand
       // würde das System die 100€-Einlage als Guthaben werten.
       Nezir: 100,
+    },
+    kundenReset: {
+      // Melik hatte am 16.08 eine Einlage ohne dazugehoerige Aufladung
+      // (manuell mit Kunde abgerechnet, aber im System nur die Einlage
+      // eingetragen). Dadurch entstand ein kuenstliches Guthaben, das
+      // spaetere neue Aufladungen frisst. Reset ab 17.08.2026 → alte
+      // Melik-Bewegungen werden ignoriert, ab da wird sauber neu gezaehlt.
+      Melik: '2026-08-17',
     },
   },
   STÖ: {
@@ -219,6 +236,7 @@ export function berechneOffeneAufladungen(
   bewegungen: BewegungLite[],
   startsaldo: Record<string, number> = {},
   stichtag?: string,
+  kundenReset: Record<string, string> = {},
 ): OffeneAufladung[] {
   interface Acc {
     saldo: number;     // laufender Saldo (positiv = Kunde schuldet)
@@ -239,6 +257,9 @@ export function berechneOffeneAufladungen(
     if (stichtag && b.datum < stichtag) continue;
     const kunde = matchKunde(b.beschreibung);
     if (!kunde) continue;
+    // Pro-Kunde-Reset: Bewegungen vor dem Reset-Datum ignorieren.
+    const reset = kundenReset[kunde];
+    if (reset && b.datum < reset) continue;
     const acc = map.get(kunde) ?? { saldo: 0, seit: null, anzahl: 0 };
     const wasOpen = acc.saldo > 0.005;
     if (b.typ === 'entnahme') {
