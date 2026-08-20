@@ -74,7 +74,7 @@ export const KUNDEN: CustomerDef[] = [
   { canonical: 'Nezir', aliases: [] },
   { canonical: 'Murat', aliases: [] },
   { canonical: 'Orhan', aliases: [] },
-  { canonical: 'Melik', aliases: [] },
+  { canonical: 'Melik', aliases: ['melich', 'melih'] },
   { canonical: 'Besim', aliases: [] },
   { canonical: 'Vanessa', aliases: ['vanesa'] },
   { canonical: 'Volkan', aliases: [] },
