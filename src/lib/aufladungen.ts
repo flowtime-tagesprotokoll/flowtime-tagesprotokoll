@@ -92,6 +92,7 @@ export const KUNDEN: CustomerDef[] = [
   { canonical: 'Murat', aliases: [] },
   { canonical: 'Orhan', aliases: [] },
   { canonical: 'Melik', aliases: ['melich', 'melih'] },
+  { canonical: 'Yunus', aliases: [] },
   { canonical: 'Besim', aliases: [] },
   { canonical: 'Vanessa', aliases: ['vanesa'] },
   { canonical: 'Volkan', aliases: [] },
@@ -201,7 +202,19 @@ export function matchKunde(beschreibung: string | null | undefined): string | nu
       }
     }
   }
-  return bestKunde;
+  if (bestKunde !== null) return bestKunde;
+
+  // Fallback: kein bekannter Kunde gematcht. Wenn wenigstens ein Token wie
+  // ein Name aussieht (>=4 Buchstaben, reine ASCII-Buchstaben, kein
+  // Stoppwort), behandeln wir ihn als NEUEN Kunden. So verschwinden
+  // Aufladungen fuer neu hinzukommende Kunden nicht mehr still — sie
+  // tauchen direkt in "Offene" auf, und der Admin sieht: neuer Name,
+  // wenn's ein Tippfehler war -> als Alias in KUNDEN nachtragen.
+  const longToken = tokens.find((t) => t.length >= 4);
+  if (longToken) {
+    return longToken.charAt(0).toUpperCase() + longToken.slice(1);
+  }
+  return null;
 }
 
 interface BewegungLite {
