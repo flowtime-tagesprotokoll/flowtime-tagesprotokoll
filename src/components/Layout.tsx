@@ -9,6 +9,7 @@ import { OnlineIndicator } from './OnlineIndicator';
 import { IdleLock } from './IdleLock';
 import { ZertifikateBanner } from './ZertifikateBanner';
 import { ThermodruckerBar } from './ThermodruckerBar';
+import { PflichtSchulungGate } from './PflichtSchulungGate';
 import { supabase } from '../lib/supabase';
 import { heuteBerlinISO } from '../lib/calc';
 import { useVorfuehrBranding, useVorfuehrModus } from '../lib/vorfuehr';
@@ -225,6 +226,7 @@ export function Layout({ children, rightSlot }: LayoutProps) {
 
       {!vorfuehr && <ShiftReminders />}
       <IdleLock />
+      <PflichtSchulungGate vorfuehr={vorfuehr} />
     </div>
   );
 }
