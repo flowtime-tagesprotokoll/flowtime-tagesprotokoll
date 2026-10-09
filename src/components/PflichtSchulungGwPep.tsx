@@ -122,6 +122,49 @@ export function PflichtSchulungGwPep({
             prüfst. Du musst das zeigen können.
           </p>
 
+          {/* Original-Foto der zwei Desktop-Icons zur Wiedererkennung */}
+          <section
+            className="rounded-lg p-3 space-y-2"
+            style={{
+              background: 'rgba(255,255,255,0.03)',
+              border: '2px solid #2a2a2a',
+            }}
+          >
+            <div className="text-xs uppercase tracking-wider text-muted font-semibold">
+              📍 So sieht's auf eurem Kassen-Desktop aus
+            </div>
+            <div className="relative rounded overflow-hidden bg-black">
+              <img
+                src={`${import.meta.env.BASE_URL}desktop-icons-pep-geldwaesche.jpg`}
+                alt="Desktop mit beiden Icons: Free PEP Check (links) und anonymer Hinweis Geldwäsche (rechts)"
+                className="w-full h-auto block"
+                style={{ maxHeight: '280px', objectFit: 'contain' }}
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-2 text-xs">
+              <div
+                className="flex items-center gap-1.5 px-2 py-1 rounded"
+                style={{
+                  background: 'rgba(96,165,250,0.12)',
+                  color: '#60a5fa',
+                }}
+              >
+                <span>←</span>
+                <span className="font-bold">Free PEP Check</span>
+              </div>
+              <div
+                className="flex items-center gap-1.5 px-2 py-1 rounded justify-end"
+                style={{
+                  background: 'rgba(248,113,113,0.12)',
+                  color: '#f87171',
+                }}
+              >
+                <span className="font-bold">anonymer Hinweis Geldwäsche</span>
+                <span>→</span>
+              </div>
+            </div>
+          </section>
+
           {/* PEP-Teil */}
           <section
             className="rounded-lg p-4 space-y-3"
