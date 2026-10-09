@@ -5,6 +5,7 @@ import {
   ReminderModal,
   buildReminders,
 } from '../components/ShiftReminders';
+import { PflichtSchulungGwPep } from '../components/PflichtSchulungGwPep';
 
 /**
  * Vorschau aller Reminder-Fenster für Admin/Review.
@@ -14,6 +15,7 @@ export function RemindersPreviewPage() {
   const navigate = useNavigate();
   const [active, setActive] = useState<number | null>(null);
   const [showNoDetail, setShowNoDetail] = useState(false);
+  const [pflichtMode, setPflichtMode] = useState<'pflicht' | 'auffrisch' | null>(null);
   const reminders = buildReminders('Mitarbeiter');
 
   return (
@@ -70,6 +72,50 @@ export function RemindersPreviewPage() {
           rotiert. Bei minimierter App: Fenster wird nach vorne geholt + Taskbar
           blinkt.
         </div>
+
+        {/* Pflicht-Schulung Vorschau */}
+        <div className="border-t border-border-soft pt-5">
+          <h2 className="text-lg font-bold mb-1">⚠️ Pflicht-Schulung Vorschau</h2>
+          <p className="text-sm text-muted mb-3">
+            So sieht das Pflicht-Modal für Mitarbeiter aus (Geldwäsche-
+            Verdachtsmeldung + PEP-Prüfung). In der Vorschau wird{' '}
+            <strong>nichts</strong> ins Audit-Log geschrieben — nur Anzeige.
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <button
+              type="button"
+              onClick={() => setPflichtMode('pflicht')}
+              className="text-left p-4 rounded-lg border-2 hover:scale-[1.01] transition-transform"
+              style={{ borderColor: '#f87171', background: 'rgba(248,113,113,0.08)' }}
+            >
+              <div className="flex items-center gap-3 mb-2">
+                <span className="text-3xl">⚠️</span>
+                <span className="text-lg font-bold" style={{ color: '#f87171' }}>
+                  Pflichtphase
+                </span>
+              </div>
+              <div className="text-xs text-muted">
+                Erste 5 Logins: nicht wegklickbar
+              </div>
+            </button>
+            <button
+              type="button"
+              onClick={() => setPflichtMode('auffrisch')}
+              className="text-left p-4 rounded-lg border-2 hover:scale-[1.01] transition-transform"
+              style={{ borderColor: '#f87171', background: 'rgba(248,113,113,0.08)' }}
+            >
+              <div className="flex items-center gap-3 mb-2">
+                <span className="text-3xl">🔁</span>
+                <span className="text-lg font-bold" style={{ color: '#f87171' }}>
+                  Auffrischung
+                </span>
+              </div>
+              <div className="text-xs text-muted">
+                Danach alle 15 Tage, mit „Später erinnern"
+              </div>
+            </button>
+          </div>
+        </div>
       </div>
 
       {active !== null && (
@@ -81,6 +127,19 @@ export function RemindersPreviewPage() {
             setActive(null);
             setShowNoDetail(false);
           }}
+        />
+      )}
+
+      {pflichtMode && (
+        <PflichtSchulungGwPep
+          preview
+          pflicht={pflichtMode === 'pflicht'}
+          anzahl={pflichtMode === 'pflicht' ? 0 : 5}
+          pflichtAnzahl={5}
+          onBestaetigt={() => setPflichtMode(null)}
+          onSpaeter={
+            pflichtMode === 'auffrisch' ? () => setPflichtMode(null) : undefined
+          }
         />
       )}
     </Layout>

@@ -24,6 +24,8 @@ interface Props {
   anzahl: number;
   /** Mindest-Anzahl Bestätigungen in Pflichtphase. */
   pflichtAnzahl: number;
+  /** Wenn true: nur Vorschau — keine Audit-Log-Schreibung. */
+  preview?: boolean;
   onBestaetigt: () => void;
   onSpaeter?: () => void;
 }
@@ -32,6 +34,7 @@ export function PflichtSchulungGwPep({
   pflicht,
   anzahl,
   pflichtAnzahl,
+  preview = false,
   onBestaetigt,
   onSpaeter,
 }: Props) {
@@ -42,6 +45,7 @@ export function PflichtSchulungGwPep({
 
   const bestaetigenMut = useMutation({
     mutationFn: async () => {
+      if (preview) return; // Vorschau: nichts speichern
       const { error } = await supabase.from('audit_log').insert({
         profile_id: session.profile.id,
         user_name: session.profile.name,
@@ -55,7 +59,9 @@ export function PflichtSchulungGwPep({
       if (error) throw error;
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['pflicht-schulung-gw-pep'] });
+      if (!preview) {
+        qc.invalidateQueries({ queryKey: ['pflicht-schulung-gw-pep'] });
+      }
       onBestaetigt();
     },
     onError: (e) => setErr(String(e instanceof Error ? e.message : e)),
