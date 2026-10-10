@@ -9,6 +9,7 @@ import { verifyPin } from '../lib/pin';
 import { ensureNotificationPermission } from '../lib/notify';
 import { firstName } from '../lib/types';
 import type { Profile } from '../lib/types';
+import { hatVorfuehrMarker, loescheVorfuehrMarker } from '../lib/vorfuehr';
 
 export function LoginPage() {
   const { data: profiles, isLoading, error } = useProfiles();
@@ -19,8 +20,24 @@ export function LoginPage() {
   // urspruengliche URL. Loggt sich der Nutzer erfolgreich ein, gehen wir
   // dorthin zurueck — insbesondere fuer /vorfuehrung wichtig.
   const fromState = (location.state as { from?: string } | null)?.from;
-  const zielNachLogin =
-    fromState && fromState.startsWith('/vorfuehrung') ? fromState : '/';
+  // Ziel-URL nach dem Login:
+  //  1. state.from falls RequireAuth uns hergeleitet hat (hat Vorrang)
+  //  2. sessionStorage-Marker falls der Browser schon /vorfuehrung besucht hat
+  //     (fängt den Fall ab, dass der Chrome-Shortcut aus Versehen auf /login
+  //      zeigt — der User soll trotzdem in der Vorführ-App landen)
+  //  3. Fallback: normales Dashboard
+  let zielNachLogin = '/';
+  if (fromState && fromState.startsWith('/vorfuehrung')) {
+    zielNachLogin = fromState;
+  } else if (hatVorfuehrMarker()) {
+    zielNachLogin = '/vorfuehrung';
+  }
+  // Nach dem Login nutzen wir den Marker nicht weiter — er wird direkt
+  // gelöscht, damit ein späteres Logout + Login nicht wieder ungewollt in
+  // die Vorführ-App führt (es sei denn, der User besucht /vorfuehrung erneut).
+  function marker_weg() {
+    loescheVorfuehrMarker();
+  }
   const [adminProfile, setAdminProfile] = useState<Profile | null>(null);
   const [pinProfile, setPinProfile] = useState<Profile | null>(null);
   const [pinErr, setPinErr] = useState<string | null>(null);
@@ -37,6 +54,7 @@ export function LoginPage() {
       setPinErr(null);
     } else {
       ensureNotificationPermission().catch(() => {});
+      marker_weg();
       setMitarbeiter(p);
       navigate(zielNachLogin);
     }
@@ -53,6 +71,7 @@ export function LoginPage() {
       return;
     }
     ensureNotificationPermission().catch(() => {});
+    marker_weg();
     setMitarbeiter(pinProfile);
     setPinProfile(null);
     navigate(zielNachLogin);
@@ -103,6 +122,7 @@ export function LoginPage() {
           profile={adminProfile}
           onClose={() => setAdminProfile(null)}
           onSuccess={(authUserId, profile) => {
+            marker_weg();
             useAuth.getState().setAdmin(profile, authUserId);
             navigate(zielNachLogin);
           }}

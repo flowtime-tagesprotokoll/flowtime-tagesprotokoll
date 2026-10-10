@@ -8,9 +8,42 @@ import { useLocation } from 'react-router-dom';
  * bei einer Kontrolle nur den Doku-Prozess sehen. Daten werden 1:1 in
  * dieselbe DB geschrieben wie bei der normalen App.
  */
+const VORFUEHR_MARKER_KEY = 'flowtime_vorfuehr_pending';
+
 export function useVorfuehrModus(): boolean {
   const location = useLocation();
-  return location.pathname.startsWith('/vorfuehrung');
+  const inVorfuehr = location.pathname.startsWith('/vorfuehrung');
+  // Wenn der User JETZT auf /vorfuehrung ist, Marker setzen — falls er gleich
+  // zum Login umgeleitet wird (nicht eingeloggt), kann Login diesen Marker
+  // als Fallback nutzen und wieder nach /vorfuehrung routen, selbst wenn
+  // state.from durch einen harten Reload verloren ging.
+  if (inVorfuehr && typeof window !== 'undefined') {
+    try {
+      window.sessionStorage.setItem(VORFUEHR_MARKER_KEY, '1');
+    } catch {
+      /* sessionStorage evtl. nicht verfuegbar */
+    }
+  }
+  return inVorfuehr;
+}
+
+/** True, wenn der aktuelle Browser-Tab zuvor /vorfuehrung besucht hat. */
+export function hatVorfuehrMarker(): boolean {
+  if (typeof window === 'undefined') return false;
+  try {
+    return window.sessionStorage.getItem(VORFUEHR_MARKER_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
+
+export function loescheVorfuehrMarker(): void {
+  if (typeof window === 'undefined') return;
+  try {
+    window.sessionStorage.removeItem(VORFUEHR_MARKER_KEY);
+  } catch {
+    /* ignore */
+  }
 }
 
 /**
