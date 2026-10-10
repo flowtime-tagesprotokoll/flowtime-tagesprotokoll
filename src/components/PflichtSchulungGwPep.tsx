@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../lib/authStore';
@@ -42,6 +42,22 @@ export function PflichtSchulungGwPep({
   const qc = useQueryClient();
   const [scrolledBottom, setScrolledBottom] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const scrollRef = useRef<HTMLDivElement | null>(null);
+
+  // Beim Oeffnen pruefen: wenn der Inhalt ohne Scrollen komplett sichtbar
+  // ist, direkt freischalten. Sonst muss der MA bis ans Ende scrollen.
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const check = () => {
+      if (el.scrollHeight - el.clientHeight < 20) {
+        setScrolledBottom(true);
+      }
+    };
+    check();
+    const t = setTimeout(check, 150); // nach Layout
+    return () => clearTimeout(t);
+  }, []);
 
   const bestaetigenMut = useMutation({
     mutationFn: async () => {
@@ -107,6 +123,7 @@ export function PflichtSchulungGwPep({
 
         {/* Scrollbarer Inhalt */}
         <div
+          ref={scrollRef}
           className="px-5 py-4 overflow-y-auto flex-1 space-y-5"
           onScroll={(e) => {
             const el = e.currentTarget;
