@@ -58,14 +58,17 @@ export function PflichtSchulungGate({ vorfuehr }: Props) {
   if (inPflichtphase) {
     return (
       <PflichtSchulungGwPep
+        // key={anzahl}: zwingt React, die Komponente nach jeder Bestätigung
+        // neu zu mounten — Countdown + Scroll-State werden zurückgesetzt,
+        // damit der User klar sieht "neue Runde" und nicht denkt das Modal
+        // sei eingefroren.
+        key={anzahl}
         pflicht
         anzahl={anzahl}
         pflichtAnzahl={PFLICHT_ANZAHL}
         onBestaetigt={() => {
-          // Nach Bestätigung schließt sich das Modal automatisch durch den
-          // Query-Invalidate, der die neue Anzahl holt. Wenn immer noch unter
-          // PFLICHT_ANZAHL, wird es direkt wieder angezeigt — der MA klickt
-          // es also 5× hintereinander. So bleibt es im Kopf.
+          /* Query-Invalidate holt neue Anzahl automatisch, key-Change oben
+             sorgt dann für sauberes Re-Mount. */
         }}
       />
     );
