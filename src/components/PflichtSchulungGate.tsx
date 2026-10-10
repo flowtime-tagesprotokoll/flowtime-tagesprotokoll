@@ -30,13 +30,24 @@ export function PflichtSchulungGate({ vorfuehr }: Props) {
     enabled: !!session && session.kind === 'mitarbeiter' && !vorfuehr,
     queryFn: async (): Promise<Array<{ ts: string }>> => {
       if (!session) return [];
-      const { data, error } = await supabase
-        .from('audit_log')
-        .select('ts')
-        .eq('profile_id', session.profile.id)
-        .eq('action', 'PFLICHT_SCHULUNG_GW_PEP_OK')
-        .order('ts', { ascending: false });
-      if (error) throw error;
+      // SECURITY DEFINER RPC — audit_log hat strenge RLS (nur Admin SELECT),
+      // Mitarbeiter koennen ihre eigenen Bestaetigungen nur hierueber lesen.
+      const { data, error } = await supabase.rpc(
+        'get_pflicht_schulung_count',
+        { _profile_id: session.profile.id },
+      );
+      if (error) {
+        // Falls RPC noch nicht deployed: Fallback auf direktes SELECT
+        // (klappt nur fuer Admin, aber verhindert Komplett-Crash).
+        const fb = await supabase
+          .from('audit_log')
+          .select('ts')
+          .eq('profile_id', session.profile.id)
+          .eq('action', 'PFLICHT_SCHULUNG_GW_PEP_OK')
+          .order('ts', { ascending: false });
+        if (fb.error) throw fb.error;
+        return (fb.data ?? []) as Array<{ ts: string }>;
+      }
       return (data ?? []) as Array<{ ts: string }>;
     },
     staleTime: 60_000,
