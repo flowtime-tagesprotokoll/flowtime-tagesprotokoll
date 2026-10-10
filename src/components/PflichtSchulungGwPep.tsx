@@ -72,8 +72,6 @@ export function PflichtSchulungGwPep({
 
   const buttonAktiv = scrolledBottom && verbleibendSek === 0;
 
-  const [showDanke, setShowDanke] = useState(false);
-
   const bestaetigenMut = useMutation({
     mutationFn: async () => {
       if (preview) return; // Vorschau: nichts speichern
@@ -90,15 +88,10 @@ export function PflichtSchulungGwPep({
       if (error) throw error;
     },
     onSuccess: () => {
-      // Kurze Danke-Rueckmeldung bevor das Modal schliesst / sich neu
-      // aufbaut — damit der MA sieht dass sein Klick gewirkt hat.
-      setShowDanke(true);
-      setTimeout(() => {
-        if (!preview) {
-          qc.invalidateQueries({ queryKey: ['pflicht-schulung-gw-pep'] });
-        }
-        onBestaetigt();
-      }, 800);
+      if (!preview) {
+        qc.invalidateQueries({ queryKey: ['pflicht-schulung-gw-pep'] });
+      }
+      onBestaetigt();
     },
     onError: (e) => setErr(String(e instanceof Error ? e.message : e)),
   });
@@ -108,30 +101,6 @@ export function PflichtSchulungGwPep({
       className="fixed inset-0 z-[70] flex items-start sm:items-center justify-center p-2 sm:p-4 overflow-auto"
       style={{ background: 'rgba(0,0,0,0.92)', backdropFilter: 'blur(8px)' }}
     >
-      {showDanke && (
-        <div
-          className="fixed inset-0 z-[80] flex items-center justify-center"
-          style={{ background: 'rgba(0,0,0,0.8)' }}
-        >
-          <div
-            className="rounded-2xl px-8 py-6 text-center animate-pulse"
-            style={{
-              background: 'rgba(74,222,128,0.15)',
-              border: '3px solid #4ade80',
-              color: '#4ade80',
-            }}
-          >
-            <div className="text-5xl mb-2">✓</div>
-            <div className="text-xl font-bold">Danke, gespeichert!</div>
-            {pflicht && anzahl + 1 < pflichtAnzahl && (
-              <div className="text-sm text-text mt-2 opacity-80">
-                Noch {pflichtAnzahl - (anzahl + 1)}× zur Vertiefung —
-                bitte nochmal durchgehen.
-              </div>
-            )}
-          </div>
-        </div>
-      )}
       <div
         className="bg-surface border-4 rounded-xl w-full max-w-3xl my-4 shadow-2xl flex flex-col"
         style={{ borderColor: '#f87171', maxHeight: 'calc(100vh - 2rem)' }}
