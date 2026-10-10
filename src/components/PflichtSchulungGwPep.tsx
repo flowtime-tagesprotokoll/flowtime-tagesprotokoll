@@ -43,6 +43,10 @@ export function PflichtSchulungGwPep({
   const [scrolledBottom, setScrolledBottom] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement | null>(null);
+  // Countdown: der Verstanden-Button wird erst nach X Sekunden freigegeben,
+  // damit der MA nicht blind durchklickt sondern wirklich kurz liest.
+  const COUNTDOWN_SEK = 10;
+  const [verbleibendSek, setVerbleibendSek] = useState<number>(COUNTDOWN_SEK);
 
   // Beim Oeffnen pruefen: wenn der Inhalt ohne Scrollen komplett sichtbar
   // ist, direkt freischalten. Sonst muss der MA bis ans Ende scrollen.
@@ -58,6 +62,15 @@ export function PflichtSchulungGwPep({
     const t = setTimeout(check, 150); // nach Layout
     return () => clearTimeout(t);
   }, []);
+
+  // Countdown-Timer: einmal pro Sekunde dekrementieren bis 0.
+  useEffect(() => {
+    if (verbleibendSek <= 0) return;
+    const t = setTimeout(() => setVerbleibendSek((s) => Math.max(0, s - 1)), 1000);
+    return () => clearTimeout(t);
+  }, [verbleibendSek]);
+
+  const buttonAktiv = scrolledBottom && verbleibendSek === 0;
 
   const bestaetigenMut = useMutation({
     mutationFn: async () => {
@@ -332,25 +345,45 @@ export function PflichtSchulungGwPep({
             </button>
           ) : (
             <div className="text-xs text-muted">
-              {scrolledBottom
-                ? '✓ Du hast alles gelesen.'
-                : '↓ Bitte komplett durchlesen (nach unten scrollen).'}
+              {!scrolledBottom
+                ? '↓ Bitte komplett durchlesen (nach unten scrollen).'
+                : verbleibendSek > 0
+                  ? `⏱ Bitte kurz lesen …`
+                  : '✓ Du hast alles gelesen.'}
             </div>
           )}
-          <button
-            type="button"
-            onClick={() => bestaetigenMut.mutate()}
-            disabled={bestaetigenMut.isPending || !scrolledBottom}
-            className="rounded-lg px-5 py-3 text-base font-bold text-bg transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-            style={{
-              background: scrolledBottom ? '#4ade80' : '#2a2a2a',
-              color: scrolledBottom ? '#0a0a0a' : '#555',
-            }}
-          >
-            {bestaetigenMut.isPending
-              ? 'Speichere …'
-              : '✓ Ich habe es gelesen und verstanden'}
-          </button>
+          <div className="flex items-center gap-3">
+            {verbleibendSek > 0 && (
+              <div
+                className="flex items-center justify-center rounded-full font-bold text-lg tabular-nums"
+                style={{
+                  width: 48,
+                  height: 48,
+                  background: 'rgba(248,113,113,0.15)',
+                  border: '2px solid rgba(248,113,113,0.5)',
+                  color: '#f87171',
+                }}
+                title="Button wird nach Ablauf freigegeben"
+              >
+                {verbleibendSek}
+              </div>
+            )}
+            <button
+              type="button"
+              onClick={() => bestaetigenMut.mutate()}
+              disabled={bestaetigenMut.isPending || !buttonAktiv}
+              className="rounded-lg px-5 py-3 text-base font-bold transition-colors disabled:cursor-not-allowed"
+              style={{
+                background: buttonAktiv ? '#4ade80' : '#2a2a2a',
+                color: buttonAktiv ? '#0a0a0a' : '#555',
+                opacity: buttonAktiv ? 1 : 0.6,
+              }}
+            >
+              {bestaetigenMut.isPending
+                ? 'Speichere …'
+                : '✓ Ich habe es gelesen und verstanden'}
+            </button>
+          </div>
         </div>
       </div>
     </div>
