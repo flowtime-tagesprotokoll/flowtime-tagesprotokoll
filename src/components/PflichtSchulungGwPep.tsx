@@ -42,6 +42,11 @@ export function PflichtSchulungGwPep({
   const qc = useQueryClient();
   const [scrolledBottom, setScrolledBottom] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  // Lokales 'dismissed' sorgt dafuer, dass das Modal SOFORT nach dem Klick
+  // verschwindet (bevor der Supabase-Insert zurueckkommt). So haengt die
+  // Oberflaeche nie — selbst bei langsamem Netz oder einem Supabase-Hiccup.
+  // Die DB-Insertion laeuft dann im Hintergrund weiter.
+  const [dismissed, setDismissed] = useState(false);
   const scrollRef = useRef<HTMLDivElement | null>(null);
   // Countdown: der Verstanden-Button wird erst nach X Sekunden freigegeben,
   // damit der MA nicht blind durchklickt sondern wirklich kurz liest.
@@ -70,7 +75,9 @@ export function PflichtSchulungGwPep({
     return () => clearTimeout(t);
   }, [verbleibendSek]);
 
-  const buttonAktiv = scrolledBottom && verbleibendSek === 0;
+  const buttonAktiv = scrolledBottom && verbleibendSek === 0 && !dismissed;
+
+  if (dismissed) return null;
 
   const bestaetigenMut = useMutation({
     mutationFn: async () => {
@@ -91,9 +98,15 @@ export function PflichtSchulungGwPep({
       if (!preview) {
         qc.invalidateQueries({ queryKey: ['pflicht-schulung-gw-pep'] });
       }
-      onBestaetigt();
+      // onBestaetigt wurde beim Click schon aufgerufen — Modal ist weg.
     },
-    onError: (e) => setErr(String(e instanceof Error ? e.message : e)),
+    onError: (e) => {
+      // Modal ist bereits weg; Fehler nur konsol-loggen, der MA merkt es
+      // beim naechsten Login (Bestaetigung ist dann nicht gespeichert und
+      // Modal kommt wieder).
+      console.warn('[PflichtSchulung] Insert fehlgeschlagen:', e);
+      setErr(String(e instanceof Error ? e.message : e));
+    },
   });
 
   return (
@@ -370,8 +383,18 @@ export function PflichtSchulungGwPep({
             )}
             <button
               type="button"
-              onClick={() => bestaetigenMut.mutate()}
-              disabled={bestaetigenMut.isPending || !buttonAktiv}
+              onClick={() => {
+                if (!buttonAktiv) return;
+                // Optimistisch: Modal sofort dismissen + onBestaetigt rufen.
+                // Mutation laeuft im Hintergrund weiter; falls ein Fehler
+                // kommt, wird er im naechsten Rendering ignoriert (Modal ist
+                // eh weg) — der MA muss ggf. beim naechsten Login erneut
+                // bestaetigen. Besser als haengende Oberflaeche.
+                setDismissed(true);
+                bestaetigenMut.mutate();
+                onBestaetigt();
+              }}
+              disabled={!buttonAktiv}
               className="rounded-lg px-5 py-3 text-base font-bold transition-colors disabled:cursor-not-allowed"
               style={{
                 background: buttonAktiv ? '#4ade80' : '#2a2a2a',
@@ -379,9 +402,7 @@ export function PflichtSchulungGwPep({
                 opacity: buttonAktiv ? 1 : 0.6,
               }}
             >
-              {bestaetigenMut.isPending
-                ? 'Speichere …'
-                : '✓ Ich habe es gelesen und verstanden'}
+              ✓ Ich habe es gelesen und verstanden
             </button>
           </div>
         </div>
