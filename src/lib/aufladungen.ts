@@ -101,6 +101,7 @@ export const KUNDEN: CustomerDef[] = [
   { canonical: 'Cemal', aliases: [] },
   { canonical: 'Sevket', aliases: ['şevket'] },
   { canonical: 'Özden', aliases: ['oezden', 'ozden'] },
+  { canonical: 'Ahmet', aliases: ['tasli', 'taşlı', 'tasli̇'] },
 ];
 
 /** Normalisiert einen String fuer den Vergleich: lowercase, Umlaute zu ASCII. */
