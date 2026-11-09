@@ -287,14 +287,22 @@ export function useReplaceBewegungen() {
 /**
  * Holt alle Kassenbewegungen eines Shops der letzten N Tage, fuer die
  * Aufladungs-Saldo-Berechnung.
+ *
+ * `since` (optional, ISO-Datum): Erzwingt ein Mindest-Abholdatum. Damit kann
+ * der Aufrufer sicherstellen, dass z.B. der Shop-Stichtag und die
+ * dazugehoerigen Tilgungs-Einlagen immer im Fenster liegen — sonst waere der
+ * Altbestand nicht sauber verrechenbar und der Saldo wuerde um den
+ * Altbestands-Betrag zu hoch angezeigt. Wird das kleinere der beiden Daten
+ * verwendet (since vs. heute - dayCount).
  */
-export function useAufladungBewegungen(shopId: string, dayCount = 180) {
+export function useAufladungBewegungen(shopId: string, dayCount = 180, since?: string) {
   return useQuery({
-    queryKey: ['aufladungen', shopId, dayCount],
+    queryKey: ['aufladungen', shopId, dayCount, since ?? null],
     queryFn: async () => {
       const cutoff = new Date();
       cutoff.setDate(cutoff.getDate() - dayCount);
-      const cutoffIso = cutoff.toISOString().slice(0, 10);
+      let cutoffIso = cutoff.toISOString().slice(0, 10);
+      if (since && since < cutoffIso) cutoffIso = since;
       // Via security-definer-RPC: liefert nur typ/beschreibung/betrag/datum,
       // damit Mitarbeiter keine alten Protokolle einsehen koennen.
       const { data, error } = await supabase.rpc('get_aufladung_bewegungen', {

@@ -161,7 +161,17 @@ export function ProtokollEditPage() {
   const { data: full, isLoading, error: protoErr } = useProtokoll(shopId, datum);
   const { data: vortag } = useVortagKasse(shopId, datum);
   const { data: vortagsUebergabe } = useVortagsUebergabe(shopId, datum);
-  const { data: aufladungBewegungen } = useAufladungBewegungen(shopId);
+  // Stichtag aus Config: sorgt dafuer, dass die Tilgungs-Einlagen zum
+  // Altbestand immer im Fenster liegen (sonst 180d-Cutoff-Bug).
+  const aufladungSince = useMemo(() => {
+    const kurz = shops?.find((s) => s.id === shopId)?.kurz;
+    return kurz ? STARTSALDO_PER_SHOP[kurz]?.stichtag : undefined;
+  }, [shops, shopId]);
+  const { data: aufladungBewegungen } = useAufladungBewegungen(
+    shopId,
+    180,
+    aufladungSince,
+  );
   const updateSchicht = useUpdateSchicht();
   const replaceBewegungen = useReplaceBewegungen();
   const deleteProtokoll = useDeleteProtokoll();
